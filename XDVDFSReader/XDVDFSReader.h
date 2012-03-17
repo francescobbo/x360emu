@@ -25,15 +25,15 @@ class XDVDFSReader
 public:
 	DLLPREFIX XDVDFSReader(std::string path, bool isPhys);
 	DLLPREFIX void DumpAllFiles();
-	DLLPREFIX void DumpDirectory(u64 sector, u64 size, bool recursive = false);
-	DLLPREFIX void DumpEntry(u8 *DirBase, u8 *buffer, bool recursive = false);
+	DLLPREFIX void DumpDirectory(EntryHeader *dir, bool recursive);
+	DLLPREFIX void DumpEntry(u8 *Directory, EntryHeader *entry, bool recursive);
 
-	DLLPREFIX void ExtractAllFiles(char *path);
-	DLLPREFIX void ExtractDirectory(char *base, char *path, u64 sector, u64 size, bool recursive = false);
-	DLLPREFIX void ExtractEntry(char *base, u8 *dirBase, u8 *buffer, bool recursive = false);
+	DLLPREFIX void ExtractAllFiles(const char *path);
+	DLLPREFIX void ExtractDirectory(const char *base, const char *path, EntryHeader *entry, bool recursive = false);
+	DLLPREFIX void ExtractEntry(const char *base, u8 *Directory, EntryHeader *entry, bool recursive = false);
 
-	DLLPREFIX void ExtractOne(char *destPath, char *origPath);
-	DLLPREFIX u64 ReadOne(char *path, char **buffer);
+	DLLPREFIX void ExtractOne(const char *destPath, const char *origPath);
+	DLLPREFIX u64 ReadOne(const char *path, u8 **buffer);
 
 private:
 	SectorReader sr;
@@ -43,8 +43,9 @@ private:
 
 	EntryHeader *Find(const char *path);
 
-	EntryHeader *FindSubdir(std::string dirName, EntryHeader *parent);
-	EntryHeader *FindFile(std::string dirName, EntryHeader *parent);
+	void ReadFile(u8 *buffer, EntryHeader *f);
+
+	EntryHeader *Find(std::string dirName, EntryHeader *parent);
 	EntryHeader *ReadDirectory(EntryHeader *dir);
 
 	void DoExtract(const char *dest, EntryHeader *entry);

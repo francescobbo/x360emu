@@ -1,4 +1,5 @@
 #include "XDVDFSReader.h"
+#include <Exceptions.h>
 #include <iostream>
 #include <vector>
 #include <deque>
@@ -28,32 +29,66 @@ XDVDFSReader::XDVDFSReader(std::string path, bool isPhys) : sr(path, isPhys)
 	RootDirectorySize = *((uint32_t *) &buffer[24]);
 }
 
-vector<string> path;
-
-void XDVDFSReader::DumpAllFiles()
+/*
+ * Reads the whole file described by @f in the @buffer.
+ * WARNING: Be sure to have allocated at least @f->FileSize bytes for buffer
+ */
+void XDVDFSReader::ReadFile(u8 *buffer, EntryHeader *f)
 {
-	DumpDirectory(RootDirectorySector, RootDirectorySize, true);
-}
+	if (!buffer || !f)
+		throw ArgumentNullException("XDVDFSReader: ReadFile has a NULL argument.");
 
-void XDVDFSReader::DumpDirectory(uint64_t sector, uint64_t size, bool recursive)
-{
-	if (!size)
-		return;
+	if (!f->StartSector)
+		throw ArgumentException("XDVDFSReader: Invalid EntryHeader structure.");
 
-	sector += base / 0x800;
+	/* Adjust the sector to align to the partition in the ISO file */
+	u64 sector = f->StartSector + base / 0x800;
 	
-	// Div round up to get number of sectors
-	size = (size + 2047) / 2048;
-
-	u8 *buffer = new u8[2048 * size];
-
-	for (int i = 0; i < size; i++)
+	/* Read whole sectors while the size is a multiple of the sector-size */
+	for (u32 i = 0; i < f->FileSize / 2048; i++)
 		sr.Read(&buffer[i * 2048], sector++);
 
-	DumpEntry(buffer, buffer, recursive);
+	/*
+	 * The last piece of the file might not end on a sector boundary and may be
+	 * skipped by the previous loop.
+	 */
+	if (f->FileSize & 0x7FF)
+		sr.Read(&buffer[f->FileSize & ~0x7FF], sector);
+}
+
+/**
+ * Traverse the whole file system and list every single file/directory.
+ * Useful only for debugging pourpose.
+ */
+void XDVDFSReader::DumpAllFiles()
+{
+	EntryHeader root;
+	root.StartSector = RootDirectorySector;
+	root.FileSize = RootDirectorySize;
+	DumpDirectory(&root, true);
+}
+
+/**
+ * Traverse a directory and list every single file/subdirectory.
+ * Useful only for debugging pourpose.
+ */
+void XDVDFSReader::DumpDirectory(EntryHeader *dir, bool recursive)
+{
+	if (!dir)
+		throw ArgumentNullException("XDVDFSReader: directory is NULL.");
+
+	/* size and/or sector = 0 means that the directory contains no files */
+	if (!dir->FileSize || !dir->StartSector)
+		return;
+
+	u8 *buffer = new u8[dir->FileSize];
+	ReadFile(buffer, dir);
+	DumpEntry(buffer, (EntryHeader *) buffer, recursive);
 
 	delete[] buffer;
 }
+
+vector<string> path;
 
 string GetPath()
 {
@@ -66,93 +101,92 @@ string GetPath()
 	return ret;
 }
 
-void XDVDFSReader::DumpEntry(u8 *DirBase, u8 *buffer, bool recursive)
+void XDVDFSReader::DumpEntry(u8 *Directory, EntryHeader *entry, bool recursive)
 {
-	EntryHeader *hdr = (EntryHeader *) buffer;
+	char *fn = new char[entry->FileNameLen + 1];
+	strncpy(fn, (const char *) &entry->FileNameLen + 1, entry->FileNameLen);
+	fn[entry->FileNameLen] = 0;
 
-	char *fn = new char[hdr->FileNameLen + 1];
-	fn[hdr->FileNameLen] = 0;
-	strncpy(fn, (const char *) &buffer[0xE], hdr->FileNameLen);
-	
 	cout << GetPath().c_str() << fn << endl;
 
-	if ((hdr->Attributes & 0x10) && recursive && hdr->FileSize != 0)
+	if ((entry->Attributes & 0x10) && recursive && entry->FileSize != 0)
 	{
+		/*
+		 * Before entering a directory, add the dir name to the path, then
+		 * remove it when we're done
+		 */
 		path.push_back(string(fn));
-		DumpDirectory(hdr->StartSector, hdr->FileSize, true);
+		DumpDirectory(entry, true);
 		path.pop_back();
 	}
 
 	if (recursive)
 	{
-		if (hdr->LeftOffset)
-			DumpEntry(DirBase, DirBase + hdr->LeftOffset * 4, true);
-		if (hdr->RightOffset)
-			DumpEntry(DirBase, DirBase + hdr->RightOffset * 4, true);
+		if (entry->LeftOffset)
+			DumpEntry(Directory, (EntryHeader *) (Directory + entry->LeftOffset * 4), true);
+		if (entry->RightOffset)
+			DumpEntry(Directory, (EntryHeader *) (Directory + entry->RightOffset * 4), true);
 	}
 }
 
-void XDVDFSReader::ExtractAllFiles(char *path)
+void XDVDFSReader::ExtractAllFiles(const char *path)
 {
-	ExtractDirectory(path, "\\", RootDirectorySector, RootDirectorySize, true);
+	EntryHeader root;
+	root.StartSector = RootDirectorySector;
+	root.FileSize = RootDirectorySize;
+	ExtractDirectory(path, "\\", &root, true);
 }
 
-void XDVDFSReader::ExtractDirectory(char *basePath, char *path, uint64_t sector, uint64_t size, bool recursive)
+void XDVDFSReader::ExtractDirectory(const char *basePath, const char *path, EntryHeader *dir, bool recursive)
 {
-	if (!size)
+	if (!dir)
+		throw ArgumentNullException("XDVDFSReader: directory is NULL.");
+
+	/* size and/or sector = 0 means that the directory contains no files */
+	if (!dir->FileSize || !dir->StartSector)
 		return;
 
 	string p = basePath;
 	p += path;
 	::CreateDirectory(p.c_str(), NULL);
 
-	sector += base / 0x800;
-	
-	// Div round up to get number of sectors
-	size = (size + 2047) / 2048;
-
-	u8 *buffer = new u8[2048 * size];
-
-	for (int i = 0; i < size; i++)
-		sr.Read(&buffer[i * 2048], sector++);
-
-	ExtractEntry(basePath, buffer, buffer, recursive);
+	u8 *buffer = new u8[dir->FileSize];
+	ReadFile(buffer, dir);
+	ExtractEntry(basePath, buffer, (EntryHeader *) buffer, recursive);
 
 	delete[] buffer;
 }
 
-void XDVDFSReader::ExtractEntry(char *basePath, u8 *DirBase, u8 *buffer, bool recursive)
+void XDVDFSReader::ExtractEntry(const char *basePath, u8 *Directory, EntryHeader *entry, bool recursive)
 {
-	EntryHeader *hdr = (EntryHeader *) buffer;
+	char *fn = new char[entry->FileNameLen + 1];
+	strncpy(fn, (const char *) &entry->FileNameLen + 1, entry->FileNameLen);
+	fn[entry->FileNameLen] = 0;
 
-	char *fn = new char[hdr->FileNameLen + 1];
-	fn[hdr->FileNameLen] = 0;
-	strncpy(fn, (const char *) &buffer[0xE], hdr->FileNameLen);
-	
 	cout << GetPath().c_str() << fn << endl;
 
-	if ((hdr->Attributes & 0x10) && recursive && hdr->FileSize != 0)
+	if ((entry->Attributes & 0x10) && recursive && entry->FileSize != 0)
 	{
 		path.push_back(string(fn));
-		ExtractDirectory(basePath, (char *) GetPath().c_str(), hdr->StartSector, hdr->FileSize, true);
+		ExtractDirectory(basePath, (char *) GetPath().c_str(), entry, true);
 		path.pop_back();
 	}
-	else if (hdr->Attributes & 0xA0)
+	else if (entry->Attributes & 0xA0)
 	{
 		// Normal file to be extracted
 		string p = basePath;
 		p += GetPath();
 		p += fn;
 		
-		DoExtract(p.c_str(), hdr);
+		DoExtract(p.c_str(), entry);
 	}
 	
 	if (recursive)
 	{
-		if (hdr->LeftOffset)
-			ExtractEntry(basePath, DirBase, DirBase + hdr->LeftOffset * 4, true);
-		if (hdr->RightOffset)
-			ExtractEntry(basePath, DirBase, DirBase + hdr->RightOffset * 4, true);
+		if (entry->LeftOffset)
+			ExtractEntry(basePath, Directory, (EntryHeader *) (Directory + entry->LeftOffset * 4), true);
+		if (entry->RightOffset)
+			ExtractEntry(basePath, Directory, (EntryHeader *) (Directory + entry->RightOffset * 4), true);
 	}
 }
 
@@ -175,7 +209,7 @@ deque<string> StringSplit(std::string original, std::string exploder=".")
 	return result;
 }
 
-EntryHeader *XDVDFSReader::FindSubdir(string dirName, EntryHeader *parent)
+EntryHeader *XDVDFSReader::Find(string dirName, EntryHeader *parent)
 {
 	EntryHeader *iterator = ReadDirectory(parent);
 	u8 *DirBase = (u8 *) iterator;
@@ -188,11 +222,7 @@ EntryHeader *XDVDFSReader::FindSubdir(string dirName, EntryHeader *parent)
 
 		int cmp = _stricmp(dirName.c_str(), fn);
 		if (!cmp)
-		{
-			if (iterator->Attributes & 0x10)
-				return iterator;
-			throw "Found a file with the good name. But it's not a directory as requested!";
-		}
+			return iterator;
 		else if (cmp < 0)
 		{
 			if (iterator->LeftOffset != 0)
@@ -209,7 +239,7 @@ EntryHeader *XDVDFSReader::FindSubdir(string dirName, EntryHeader *parent)
 		}
 	}
 
-	throw "Directory not found!";
+	throw "Not found!";
 }
 
 EntryHeader *XDVDFSReader::ReadDirectory(EntryHeader *dir)
@@ -226,43 +256,6 @@ EntryHeader *XDVDFSReader::ReadDirectory(EntryHeader *dir)
 	return (EntryHeader *) buffer;
 }
 
-EntryHeader *XDVDFSReader::FindFile(string dirName, EntryHeader *parent)
-{
-	EntryHeader *iterator = ReadDirectory(parent);
-	u8 *DirBase = (u8 *) iterator;
-
-	while (iterator)
-	{
-		char *fn = new char[iterator->FileNameLen + 1];
-		strncpy(fn, (char *) iterator + 0xE, iterator->FileNameLen);
-		fn[iterator->FileNameLen] = 0;
-
-		int cmp = _stricmp(dirName.c_str(), fn);
-		if (!cmp)
-		{
-			if (iterator->Attributes & 0xA0)
-				return iterator;
-			throw "Found a file with the good name. But it's not a \"normal\" file...";
-		}
-		else if (cmp < 0)
-		{
-			if (iterator->LeftOffset != 0)
-				iterator = (EntryHeader *) (DirBase + iterator->LeftOffset * 4);
-			else
-				iterator = 0;
-		}
-		else
-		{
-			if (iterator->RightOffset != 0)
-				iterator = (EntryHeader *) (DirBase + iterator->RightOffset * 4);
-			else
-				iterator = 0;
-		}
-	}
-
-	throw "File not found!";
-}
-
 EntryHeader *XDVDFSReader::Find(const char *path)
 {
 	deque<string> Path = StringSplit(path, "\\");
@@ -273,11 +266,13 @@ EntryHeader *XDVDFSReader::Find(const char *path)
 
 	while (Path.size() != 1)
 	{
-		curDir = FindSubdir(Path[0], curDir);
+		curDir = Find(Path[0], curDir);
+		if (curDir->Attributes & 0x10)
+			throw "Found an entry requested as a directory. But it's a file";
 		Path.pop_front();
 	}
 
-	return FindFile(Path[0], curDir);
+	return Find(Path[0], curDir);
 }
 
 void XDVDFSReader::DoExtract(const char *dest, EntryHeader *entry)
@@ -300,30 +295,20 @@ void XDVDFSReader::DoExtract(const char *dest, EntryHeader *entry)
 	fs.Write(tmpBuff, remaining);
 }
 
-void XDVDFSReader::ExtractOne(char *destPath, char *origPath)
+void XDVDFSReader::ExtractOne(const char *destPath, const char *origPath)
 {
 	EntryHeader *fileEntry = Find(origPath);
 	DoExtract(destPath, fileEntry);
 }	
 
-uint64_t XDVDFSReader::ReadOne(char *path, char **buffer)
+uint64_t XDVDFSReader::ReadOne(const char *path, u8 **buffer)
 {
 	EntryHeader *fileEntry = Find(path);
 
-	*buffer = new char[fileEntry->FileSize];
-	char *realBuff = *buffer;
+	*buffer = new u8[fileEntry->FileSize];
+	u8 *realBuff = *buffer;
 
-	for (uint64_t i = 0; i < fileEntry->FileSize / 2048; i++)
-		sr.Read((u8 *) &realBuff[i * 2048], fileEntry->StartSector + i + base / 0x800);
-
-	/*
-	 * Since the above will read only 2048 bytes blocks, it will skip the last
-	 * one, if present, that is smaller than that. So read the remaining bytes.
-	 */
-	char tmpBuff[2048];
-	size_t remaining = fileEntry->FileSize % 2048;
-	sr.Read((u8 *) tmpBuff, fileEntry->StartSector + (fileEntry->FileSize + 2047) / 2048 + base / 0x800);
-	memcpy(&realBuff[(fileEntry->FileSize / 0x800) * 0x800], tmpBuff, remaining);
+	ReadFile(*buffer, fileEntry);
 
 	return fileEntry->FileSize;
 }
