@@ -16,6 +16,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XexParser", "XexParser\XexP
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XDVDFSReader", "XDVDFSReader\XDVDFSReader.vcxproj", "{0C0CF37E-D267-AF1E-C024-06D1510C05BE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{69A0A1CD-483D-B27D-3F49-5ADF6D96245B} = {69A0A1CD-483D-B27D-3F49-5ADF6D96245B}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "x360emu", "x360emu\x360emu.vcxproj", "{8DC5290E-B0CB-95BC-2C35-DEE17C6F9640}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -124,5 +127,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
 	EndGlobalSection
 EndGlobal
