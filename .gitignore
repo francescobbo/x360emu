@@ -24,6 +24,8 @@ x64/
 *.sbr
 *.xex
 *.xbdf
+*.psess
+*.vsp
 obj/
 [Rr]elease*/
 _ReSharper*/

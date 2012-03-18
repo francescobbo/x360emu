@@ -1,346 +1,371 @@
+/**
+ * x360emu - An emulator for the Xbox 360 gaming system.
+ * Copyright (C) 2012 - The x360emu Project
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see http://www.gnu.org/licenses/.
+ */
+
 #include "Xenon.h"
 #include "XInterpreter.h"
 #include "../Memory.h"
+#include "../HLE/HLE.h"
+#include <XenonParser.h>
+#include <Exceptions.h>
+#include <iostream>
+#include <vector>
 
-XenonParser mainTables;
+using namespace std;
+
+XInterpreter::handler XInterpreter::CallTable[PPC_OP_LAST];
 
 XInterpreter::XInterpreter(Xenon::CpuState &state) : xState(state)
 {
-	SetupTables();
-
-	xp.SetParam(&state);
-	xp.CopyTables(mainTables);
+    SetupXenonTables();
+    SetupCallTable();
 }
 
 void XInterpreter::Init()
 {
 }
 
-#include <iostream>
-#include <vector>
-using namespace std;
-
 vector<u32> Branches;
 
 void XInterpreter::Run()
 {
-	xState.State = Xenon::CpuStates::Running;
-	Branches.push_back(xState.pc);
+    xState.State = Xenon::CpuStates::Running;
+    Branches.push_back(xState.pc);
 
-	try
-	{
-		while (xState.State == Xenon::CpuStates::Running)
-		{
-			xState.npc = xState.pc + 4;
+    try
+    {
+        while (xState.State == Xenon::CpuStates::Running)
+        {
+            xState.npc = xState.pc + 4;
 
-			xState.CurrentInstruction.hex = Memory::Read32(xState.pc);
-			xp.Parse(xState.CurrentInstruction.hex);
+            xState.CurrentInstruction.hex = Memory::Read32(xState.pc);
+            OpcodeInfo *info = GetInfo(xState.CurrentInstruction.hex);
+            CallTable[info->Id](&xState);
+//          xp.Parse(xState.CurrentInstruction.hex);
 
-			xState.pc = xState.npc;
-		}
-	}
-	catch (...)
-	{
-		cout << "Got Exception (Unknown OpCode?) at PC = 0x" << hex << xState.pc << endl;
-		cout << "Backtrace:\n";
-		for (int i = 0; i < Branches.size(); i++)
-		{
-			cout << Branches[i];
-			
-			if (i + 1 != Branches.size())
-				cout << " called " << Branches[i + 1];
-			cout << endl;
-		}
-	}
+            xState.pc = xState.npc;
+        }
+    }
+    catch (Exception &exc)
+    {
+        cout << "Got Exception (" << exc.GetMessage() << ") at PC = 0x" << hex << xState.pc << endl;
+        cout << "Backtrace:\n";
+        for (int i = 0; i < Branches.size(); i++)
+        {
+            cout << Branches[i];
+            
+            if (i + 1 != Branches.size())
+                cout << " called " << Branches[i + 1];
+            cout << endl;
+        }
+    }
+    catch (...)
+    {
+        cout << "Got Exception (Unknown OpCode?) at PC = 0x" << hex << xState.pc << endl;
+        cout << "Backtrace:\n";
+        for (int i = 0; i < Branches.size(); i++)
+        {
+            cout << Branches[i];
+            
+            if (i + 1 != Branches.size())
+                cout << " called " << Branches[i + 1];
+            cout << endl;
+        }
+    }
 }
 
 void XInterpreter::Stop()
 {
 }
 
-#include "../HLE/HLE.h"
+void XInterpreter::OpInvalid(Xenon::CpuState *xState)
+{
+    OpcodeInfo *i = GetInfo(xState->CurrentInstruction.hex);
+    if (i->Flags & OP_UNKNOWN)
+        throw Exception("XInterpreter: Invalid OpCode");
+    else
+    {
+        std::string err = "XInterpreter: OpCode ";
+        err += i->Name;
+        err += " not implemented yet!";
+        throw Exception(err);
+    }
+}
+
 void HleHandler(Xenon::CpuState *xState)
 {
-	HLE::Exec(xState, xState->CurrentInstruction.hex & 0xFFFFFF);
+    HLE::Exec(xState, xState->CurrentInstruction.hex & 0xFFFFFF);
 }
 
 static bool TablesDone = false;
-void XInterpreter::SetupTables()
+void XInterpreter::SetupCallTable()
 {
-	if (TablesDone)
-		return;
+    if (TablesDone)
+        return;
 
-	mainTables.Register(Mnemonics::PPC_OP_HLE_CALL, (handler) HleHandler);
+    for (int i = 0; i < PPC_OP_LAST; i++)
+        CallTable[i] = OpInvalid;
 
-	mainTables.Register(Mnemonics::PPC_OP_ADD, (handler) OpAdd);
-	mainTables.Register(Mnemonics::PPC_OP_ADDO, (handler) OpAddo);
-	mainTables.Register(Mnemonics::PPC_OP_ADDC, (handler) OpAddc);
-	mainTables.Register(Mnemonics::PPC_OP_ADDCO, (handler) OpAddco);
-	mainTables.Register(Mnemonics::PPC_OP_ADDE, (handler) OpAdde);
-	mainTables.Register(Mnemonics::PPC_OP_ADDEO, (handler) OpAddeo);
-	mainTables.Register(Mnemonics::PPC_OP_ADDI, (handler) OpAddi);
-	mainTables.Register(Mnemonics::PPC_OP_ADDIC, (handler) OpAddic);
-	mainTables.Register(Mnemonics::PPC_OP_ADDIC_UP, (handler) OpAddicUp);
-	mainTables.Register(Mnemonics::PPC_OP_ADDIS, (handler) OpAddis);
-	mainTables.Register(Mnemonics::PPC_OP_ADDME, (handler) OpAddme);
-	mainTables.Register(Mnemonics::PPC_OP_ADDMEO, (handler) OpAddmeo);
-	mainTables.Register(Mnemonics::PPC_OP_ADDZE, (handler) OpAddze);
-	mainTables.Register(Mnemonics::PPC_OP_ADDZEO, (handler) OpAddzeo);
-	mainTables.Register(Mnemonics::PPC_OP_AND, (handler) OpAnd);
-	mainTables.Register(Mnemonics::PPC_OP_ANDC, (handler) OpAndc);
-	mainTables.Register(Mnemonics::PPC_OP_ANDI_UP, (handler) OpAndiUp);
-	mainTables.Register(Mnemonics::PPC_OP_ANDIS_UP, (handler) OpAndisUp);
-	mainTables.Register(Mnemonics::PPC_OP_B, (handler) OpB);
-	mainTables.Register(Mnemonics::PPC_OP_BC, (handler) OpBc);
-	mainTables.Register(Mnemonics::PPC_OP_BCCTR, (handler) OpBcctr);
-	mainTables.Register(Mnemonics::PPC_OP_BCLR, (handler) OpBclr);
-	mainTables.Register(Mnemonics::PPC_OP_CMP, (handler) OpCmp);
-	mainTables.Register(Mnemonics::PPC_OP_CMPI, (handler) OpCmpi);
-	mainTables.Register(Mnemonics::PPC_OP_CMPL, (handler) OpCmpl);
-	mainTables.Register(Mnemonics::PPC_OP_CMPLI, (handler) OpCmpli);
-	mainTables.Register(Mnemonics::PPC_OP_CNTLZD, (handler) OpCntlzd);
-	mainTables.Register(Mnemonics::PPC_OP_CNTLZW, (handler) OpCntlzw);
-	mainTables.Register(Mnemonics::PPC_OP_CRAND, (handler) OpCrand);
-	mainTables.Register(Mnemonics::PPC_OP_CRANDC, (handler) OpCrandc);
-	mainTables.Register(Mnemonics::PPC_OP_CREQV, (handler) OpCreqv);
-	mainTables.Register(Mnemonics::PPC_OP_CRNAND, (handler) OpCrnand);
-	mainTables.Register(Mnemonics::PPC_OP_CRNOR, (handler) OpCrnor);
-	mainTables.Register(Mnemonics::PPC_OP_CROR, (handler) OpCror);
-	mainTables.Register(Mnemonics::PPC_OP_CRORC, (handler) OpCrorc);
-	mainTables.Register(Mnemonics::PPC_OP_CRXOR, (handler) OpCrxor);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_DCBF, (handler) OpDcbf);
-	mainTables.Register(Mnemonics::PPC_OP_DCBST, (handler) OpDcbst);
-	mainTables.Register(Mnemonics::PPC_OP_DCBT, (handler) OpDcbt);
-	mainTables.Register(Mnemonics::PPC_OP_DCBTST, (handler) OpDcbtst);
-	mainTables.Register(Mnemonics::PPC_OP_DCBZ, (handler) OpDcbz);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_DIVD, (handler) OpDivd);
-	mainTables.Register(Mnemonics::PPC_OP_DIVDO, (handler) OpDivdo);
-	mainTables.Register(Mnemonics::PPC_OP_DIVDU, (handler) OpDivdu);
-	mainTables.Register(Mnemonics::PPC_OP_DIVDUO, (handler) OpDivduo);
-	mainTables.Register(Mnemonics::PPC_OP_DIVW, (handler) OpDivw);
-	mainTables.Register(Mnemonics::PPC_OP_DIVWO, (handler) OpDivwo);
-	mainTables.Register(Mnemonics::PPC_OP_DIVWU, (handler) OpDivwu);
-	mainTables.Register(Mnemonics::PPC_OP_DIVWUO, (handler) OpDivwuo);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_ECIWX, (handler) OpEciwx);
-	mainTables.Register(Mnemonics::PPC_OP_ECOWX, (handler) OpEcowx);
-	mainTables.Register(Mnemonics::PPC_OP_EIEIO, (handler) OpEieio);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_EQV, (handler) OpEqv);
-	mainTables.Register(Mnemonics::PPC_OP_EXTSB, (handler) OpExtsb);
-	mainTables.Register(Mnemonics::PPC_OP_EXTSH, (handler) OpExtsh);
-	mainTables.Register(Mnemonics::PPC_OP_EXTSW, (handler) OpExtsw);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_FABS, (handler) OpFabs);
-	mainTables.Register(Mnemonics::PPC_OP_FADD, (handler) OpFadd);
-	mainTables.Register(Mnemonics::PPC_OP_FADDS, (handler) OpFadds);
-	mainTables.Register(Mnemonics::PPC_OP_FCFID, (handler) OpFcfid);
-	mainTables.Register(Mnemonics::PPC_OP_FCMPO, (handler) OpFcmpo);
-	mainTables.Register(Mnemonics::PPC_OP_FCMPU, (handler) OpFcmpu);
-	mainTables.Register(Mnemonics::PPC_OP_FCTID, (handler) OpFctid);
-	mainTables.Register(Mnemonics::PPC_OP_FCTIDZ, (handler) OpFctidz);
-	mainTables.Register(Mnemonics::PPC_OP_FCTIW, (handler) OpFctiw);
-	mainTables.Register(Mnemonics::PPC_OP_FCTIWZ, (handler) OpFctiwz);
-	mainTables.Register(Mnemonics::PPC_OP_FDIV, (handler) OpFdiv);
-	mainTables.Register(Mnemonics::PPC_OP_FDIVS, (handler) OpFdivs);
-	mainTables.Register(Mnemonics::PPC_OP_FMADD, (handler) OpFmadd);
-	mainTables.Register(Mnemonics::PPC_OP_FMADDS, (handler) OpFmadds);
-	mainTables.Register(Mnemonics::PPC_OP_FMR, (handler) OpFmr);
-	mainTables.Register(Mnemonics::PPC_OP_FMSUB, (handler) OpFmsub);
-	mainTables.Register(Mnemonics::PPC_OP_FMSUBS, (handler) OpFmsubs);
-	mainTables.Register(Mnemonics::PPC_OP_FMUL, (handler) OpFmul);
-	mainTables.Register(Mnemonics::PPC_OP_FMULS, (handler) OpFmuls);
-	mainTables.Register(Mnemonics::PPC_OP_FNABS, (handler) OpFnabs);
-	mainTables.Register(Mnemonics::PPC_OP_FNEG, (handler) OpFneg);
-	mainTables.Register(Mnemonics::PPC_OP_FNMADD, (handler) OpFnmadd);
-	mainTables.Register(Mnemonics::PPC_OP_FNMADDS, (handler) OpFnmadds);
-	mainTables.Register(Mnemonics::PPC_OP_FNMSUB, (handler) OpFnmsub);
-	mainTables.Register(Mnemonics::PPC_OP_FNMSUBS, (handler) OpFnmsubs);
-	mainTables.Register(Mnemonics::PPC_OP_FRES, (handler) OpFres);
-	mainTables.Register(Mnemonics::PPC_OP_FRSP, (handler) OpFrsp);
-	mainTables.Register(Mnemonics::PPC_OP_FRSQRTE, (handler) OpFrsqrte);
-	mainTables.Register(Mnemonics::PPC_OP_FSEL, (handler) OpFsel);
-	mainTables.Register(Mnemonics::PPC_OP_FSQRT, (handler) OpFsqrt);
-	mainTables.Register(Mnemonics::PPC_OP_FSQRTS, (handler) OpFsqrts);
-	mainTables.Register(Mnemonics::PPC_OP_FSUB, (handler) OpFsub);
-	mainTables.Register(Mnemonics::PPC_OP_FSUBS, (handler) OpFsubs);
-	mainTables.Register(Mnemonics::PPC_OP_ICBI, (handler) OpIcbi);
-	mainTables.Register(Mnemonics::PPC_OP_ISYNC, (handler) OpIsync);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_LBZ, (handler) OpLbz);
-	mainTables.Register(Mnemonics::PPC_OP_LBZU, (handler) OpLbzu);
-	mainTables.Register(Mnemonics::PPC_OP_LBZUX, (handler) OpLbzux);
-	mainTables.Register(Mnemonics::PPC_OP_LBZX, (handler) OpLbzx);
-	mainTables.Register(Mnemonics::PPC_OP_LD, (handler) OpLd);
-	mainTables.Register(Mnemonics::PPC_OP_LDARX, (handler) OpLdarx);
-	mainTables.Register(Mnemonics::PPC_OP_LDU, (handler) OpLdu);
-	mainTables.Register(Mnemonics::PPC_OP_LDUX, (handler) OpLdux);
-	mainTables.Register(Mnemonics::PPC_OP_LDX, (handler) OpLdx);
-	mainTables.Register(Mnemonics::PPC_OP_LFD, (handler) OpLfd);
-	mainTables.Register(Mnemonics::PPC_OP_LFDU, (handler) OpLfdu);
-	mainTables.Register(Mnemonics::PPC_OP_LFDUX, (handler) OpLfdux);
-	mainTables.Register(Mnemonics::PPC_OP_LFDX, (handler) OpLfdx);
-	mainTables.Register(Mnemonics::PPC_OP_LFS, (handler) OpLfs);
-	mainTables.Register(Mnemonics::PPC_OP_LFSU, (handler) OpLfsu);
-	mainTables.Register(Mnemonics::PPC_OP_LFSUX, (handler) OpLfsux);
-	mainTables.Register(Mnemonics::PPC_OP_LFSX, (handler) OpLfsx);
-	mainTables.Register(Mnemonics::PPC_OP_LHA, (handler) OpLha);
-	mainTables.Register(Mnemonics::PPC_OP_LHAU, (handler) OpLhau);
-	mainTables.Register(Mnemonics::PPC_OP_LHAUX, (handler) OpLhaux);
-	mainTables.Register(Mnemonics::PPC_OP_LHAX, (handler) OpLhax);
-	mainTables.Register(Mnemonics::PPC_OP_LHBRX, (handler) OpLhbrx);
-	mainTables.Register(Mnemonics::PPC_OP_LHZ, (handler) OpLhz);
-	mainTables.Register(Mnemonics::PPC_OP_LHZU, (handler) OpLhzu);
-	mainTables.Register(Mnemonics::PPC_OP_LHZUX, (handler) OpLhzux);
-	mainTables.Register(Mnemonics::PPC_OP_LHZX, (handler) OpLhzx);
-	mainTables.Register(Mnemonics::PPC_OP_LMW, (handler) OpLmw);
-	mainTables.Register(Mnemonics::PPC_OP_LSWI, (handler) OpLswi);
-	mainTables.Register(Mnemonics::PPC_OP_LSWX, (handler) OpLswx);
-	mainTables.Register(Mnemonics::PPC_OP_LWA, (handler) OpLwa);
-	mainTables.Register(Mnemonics::PPC_OP_LWARX, (handler) OpLwarx);
-	mainTables.Register(Mnemonics::PPC_OP_LWAUX, (handler) OpLwaux);
-	mainTables.Register(Mnemonics::PPC_OP_LWAX, (handler) OpLwax);
-	mainTables.Register(Mnemonics::PPC_OP_LWBRX, (handler) OpLwbrx);
-	mainTables.Register(Mnemonics::PPC_OP_LWZ, (handler) OpLwz);
-	mainTables.Register(Mnemonics::PPC_OP_LWZU, (handler) OpLwzu);
-	mainTables.Register(Mnemonics::PPC_OP_LWZUX, (handler) OpLwzux);
-	mainTables.Register(Mnemonics::PPC_OP_LWZX, (handler) OpLwzx);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_MCRF, (handler) OpMcrf);
-	mainTables.Register(Mnemonics::PPC_OP_MCRFS, (handler) OpMcrfs);
-	mainTables.Register(Mnemonics::PPC_OP_MFCR, (handler) OpMfcr);
-	mainTables.Register(Mnemonics::PPC_OP_MFFS, (handler) OpMffs);
-	mainTables.Register(Mnemonics::PPC_OP_MFMSR, (handler) OpMfmsr);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_MFSPR, (handler) OpMfspr);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_MFSR, (handler) OpMfsr);
-	mainTables.Register(Mnemonics::PPC_OP_MFSRIN, (handler) OpMfsrin);
-	mainTables.Register(Mnemonics::PPC_OP_MFTB, (handler) OpMftb);
-	mainTables.Register(Mnemonics::PPC_OP_MTCRF, (handler) OpMtcrf);
-	mainTables.Register(Mnemonics::PPC_OP_MTFSB0, (handler) OpMtfsb0);
-	mainTables.Register(Mnemonics::PPC_OP_MTFSB1, (handler) OpMtfsb1);
-	mainTables.Register(Mnemonics::PPC_OP_MTFSF, (handler) OpMtfsf);
-	mainTables.Register(Mnemonics::PPC_OP_MTFSFI, (handler) OpMtfsfi);
-	mainTables.Register(Mnemonics::PPC_OP_MTMSR, (handler) OpMtmsr);
-	mainTables.Register(Mnemonics::PPC_OP_MTMSRD, (handler) OpMtmsrd);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_MTSPR, (handler) OpMtspr);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_MTSR, (handler) OpMtsr);
-	mainTables.Register(Mnemonics::PPC_OP_MTSRIN, (handler) OpMtsrin);
-	mainTables.Register(Mnemonics::PPC_OP_MULHD, (handler) OpMulthd);
-	mainTables.Register(Mnemonics::PPC_OP_MULHDU, (handler) OpMulthdu);
-	mainTables.Register(Mnemonics::PPC_OP_MULHW, (handler) OpMulhw);
-	mainTables.Register(Mnemonics::PPC_OP_MULHWU, (handler) OpMulhwu);
-	mainTables.Register(Mnemonics::PPC_OP_MULLD, (handler) OpMulld);
-	mainTables.Register(Mnemonics::PPC_OP_MULLDO, (handler) OpMulldo);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_MULLI, (handler) OpMulli);
-	mainTables.Register(Mnemonics::PPC_OP_MULLW, (handler) OpMullw);
-	mainTables.Register(Mnemonics::PPC_OP_MULLWO, (handler) OpMullwo);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_NAND, (handler) OpNand);
-	mainTables.Register(Mnemonics::PPC_OP_NEG, (handler) OpNeg);
-	mainTables.Register(Mnemonics::PPC_OP_NEGO, (handler) OpNego);
-	mainTables.Register(Mnemonics::PPC_OP_NOR, (handler) OpNor);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_OR, (handler) OpOr);
-	mainTables.Register(Mnemonics::PPC_OP_ORC, (handler) OpOrc);
-	mainTables.Register(Mnemonics::PPC_OP_ORI, (handler) OpOri);
-	mainTables.Register(Mnemonics::PPC_OP_ORIS, (handler) OpOris);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_RFID, (handler) OpRfid);
-	mainTables.Register(Mnemonics::PPC_OP_RLDCL, (handler) OpRldcl);
-	mainTables.Register(Mnemonics::PPC_OP_RLDCR, (handler) OpRldcr);
-	mainTables.Register(Mnemonics::PPC_OP_RLDIC, (handler) OpRldic);
-	mainTables.Register(Mnemonics::PPC_OP_RLDICL, (handler) OpRldicl);
-	mainTables.Register(Mnemonics::PPC_OP_RLDICR, (handler) OpRldicr);
-	mainTables.Register(Mnemonics::PPC_OP_RLDIMI, (handler) OpRldimi);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_RLWIMI, (handler) OpRlwimi);
-	mainTables.Register(Mnemonics::PPC_OP_RLWINM, (handler) OpRlwinm);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_RLWNM, (handler) OpRlwnm);
-	mainTables.Register(Mnemonics::PPC_OP_SC, (handler) OpSc);
-	mainTables.Register(Mnemonics::PPC_OP_SLBIA, (handler) OpSlbia);
-	mainTables.Register(Mnemonics::PPC_OP_SLBIE, (handler) OpSlbie);
-	mainTables.Register(Mnemonics::PPC_OP_SLBMFEE, (handler) OpSlbmfee);
-	mainTables.Register(Mnemonics::PPC_OP_SLBMFEV, (handler) OpSlbmfev);
-	mainTables.Register(Mnemonics::PPC_OP_SLBMTE, (handler) OpSlbmte);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_SLD, (handler) OpSld);
-	mainTables.Register(Mnemonics::PPC_OP_SLW, (handler) OpSlw);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_SRAD, (handler) OpSrad);
-	mainTables.Register(Mnemonics::PPC_OP_SRADI, (handler) OpSradi);
-	mainTables.Register(Mnemonics::PPC_OP_SRADI1, (handler) OpSradi);		/* Ugly hack. This is actually the same instruction differing just for 1 bit. See PPC spec for details */
-	mainTables.Register(Mnemonics::PPC_OP_SRAW, (handler) OpSraw);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_SRAWI, (handler) OpSrawi);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_SRD, (handler) OpSrd);
-	mainTables.Register(Mnemonics::PPC_OP_SRW, (handler) OpSrw);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_STB, (handler) OpStb);
-	mainTables.Register(Mnemonics::PPC_OP_STBU, (handler) OpStbu);
-	mainTables.Register(Mnemonics::PPC_OP_STBUX, (handler) OpStbux);
-	mainTables.Register(Mnemonics::PPC_OP_STBX, (handler) OpStbx);
-	mainTables.Register(Mnemonics::PPC_OP_STD, (handler) OpStd);
-	mainTables.Register(Mnemonics::PPC_OP_STDCX_UP, (handler) OpStdcx);
-	mainTables.Register(Mnemonics::PPC_OP_STDU, (handler) OpStdu);
-	mainTables.Register(Mnemonics::PPC_OP_STDUX, (handler) OpStdux);
-	mainTables.Register(Mnemonics::PPC_OP_STDX, (handler) OpStdx);
-	mainTables.Register(Mnemonics::PPC_OP_STFD, (handler) OpStfd);
-	mainTables.Register(Mnemonics::PPC_OP_STFDU, (handler) OpStfdu);
-	mainTables.Register(Mnemonics::PPC_OP_STFDUX, (handler) OpStfdux);
-	mainTables.Register(Mnemonics::PPC_OP_STFDX, (handler) OpStfdx);
-	mainTables.Register(Mnemonics::PPC_OP_STFIWX, (handler) OpStfiwx);
-	mainTables.Register(Mnemonics::PPC_OP_STFS, (handler) OpStfs);
-	mainTables.Register(Mnemonics::PPC_OP_STFSU, (handler) OpStfsu);
-	mainTables.Register(Mnemonics::PPC_OP_STFSUX, (handler) OpStfsux);
-	mainTables.Register(Mnemonics::PPC_OP_STFSX, (handler) OpStfsx);
-	mainTables.Register(Mnemonics::PPC_OP_STH, (handler) OpSth);
-	mainTables.Register(Mnemonics::PPC_OP_STHBRX, (handler) OpSthbrx);
-	mainTables.Register(Mnemonics::PPC_OP_STHU, (handler) OpSthu);
-	mainTables.Register(Mnemonics::PPC_OP_STHUX, (handler) OpSthux);
-	mainTables.Register(Mnemonics::PPC_OP_STHX, (handler) OpSthx);
-	mainTables.Register(Mnemonics::PPC_OP_STMW, (handler) OpStmw);
-	mainTables.Register(Mnemonics::PPC_OP_STSWI, (handler) OpStswi);
-	mainTables.Register(Mnemonics::PPC_OP_STSWX, (handler) OpStswx);
-	mainTables.Register(Mnemonics::PPC_OP_STW, (handler) OpStw);
-	mainTables.Register(Mnemonics::PPC_OP_STWBRX, (handler) OpStwbrx);
-	mainTables.Register(Mnemonics::PPC_OP_STWCX_UP, (handler) OpStwcx);
-	mainTables.Register(Mnemonics::PPC_OP_STWU, (handler) OpStwu);
-	mainTables.Register(Mnemonics::PPC_OP_STWUX, (handler) OpStwux);
-	mainTables.Register(Mnemonics::PPC_OP_STWX, (handler) OpStwx);
-	mainTables.Register(Mnemonics::PPC_OP_SUBF, (handler) OpSubf);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFO, (handler) OpSubfo);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFC, (handler) OpSubfc);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFCO, (handler) OpSubfco);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFE, (handler) OpSubfe);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFEO, (handler) OpSubfeo);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFIC, (handler) OpSubfic);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFME, (handler) OpSubfme);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFMEO, (handler) OpSubfmeo);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFZE, (handler) OpSubfze);
-	mainTables.Register(Mnemonics::PPC_OP_SUBFZEO, (handler) OpSubfzeo);
-#if 0
-	mainTables.Register(Mnemonics::PPC_OP_SYNC, (handler) OpSync);
-	mainTables.Register(Mnemonics::PPC_OP_TD, (handler) OpTd);
-	mainTables.Register(Mnemonics::PPC_OP_TDI, (handler) OpTdi);
-	mainTables.Register(Mnemonics::PPC_OP_TLBIA, (handler) OpTlbia);
-	mainTables.Register(Mnemonics::PPC_OP_TLBIE, (handler) OpTlbie);
-	mainTables.Register(Mnemonics::PPC_OP_TLBIEL, (handler) OpTlbiel);
-	mainTables.Register(Mnemonics::PPC_OP_TLBSYNC, (handler) OpTlbsync);
-	mainTables.Register(Mnemonics::PPC_OP_TW, (handler) OpTw);
-#endif
-	mainTables.Register(Mnemonics::PPC_OP_TWI, (handler) OpTwi);
-	mainTables.Register(Mnemonics::PPC_OP_XOR, (handler) OpXor);
-	mainTables.Register(Mnemonics::PPC_OP_XORI, (handler) OpXori);
-	mainTables.Register(Mnemonics::PPC_OP_XORIS, (handler) OpXoris);
+    CallTable[PPC_OP_HLE_CALL] = HleHandler;
 
-	TablesDone = true;
+    CallTable[PPC_OP_ADD] = OpAdd;
+    CallTable[PPC_OP_ADDC] = OpAddc;
+    CallTable[PPC_OP_ADDE] = OpAdde;
+    CallTable[PPC_OP_ADDI] = OpAddi;
+    CallTable[PPC_OP_ADDIC] = OpAddic;
+    CallTable[PPC_OP_ADDIC_UP] = OpAddicUp;
+    CallTable[PPC_OP_ADDIS] = OpAddis;
+    CallTable[PPC_OP_ADDME] = OpAddme;
+    CallTable[PPC_OP_ADDZE] = OpAddze;
+    CallTable[PPC_OP_AND] = OpAnd;
+    CallTable[PPC_OP_ANDC] = OpAndc;
+    CallTable[PPC_OP_ANDI_UP] = OpAndiUp;
+    CallTable[PPC_OP_ANDIS_UP] = OpAndisUp;
+    CallTable[PPC_OP_B] = OpB;
+    CallTable[PPC_OP_BC] = OpBc;
+    CallTable[PPC_OP_BCCTR] = OpBcctr;
+    CallTable[PPC_OP_BCLR] = OpBclr;
+    CallTable[PPC_OP_CMP] = OpCmp;
+    CallTable[PPC_OP_CMPI] = OpCmpi;
+    CallTable[PPC_OP_CMPL] = OpCmpl;
+    CallTable[PPC_OP_CMPLI] = OpCmpli;
+    CallTable[PPC_OP_CNTLZD] = OpCntlzd;
+    CallTable[PPC_OP_CNTLZW] = OpCntlzw;
+    CallTable[PPC_OP_CRAND] = OpCrand;
+    CallTable[PPC_OP_CRANDC] = OpCrandc;
+    CallTable[PPC_OP_CREQV] = OpCreqv;
+    CallTable[PPC_OP_CRNAND] = OpCrnand;
+    CallTable[PPC_OP_CRNOR] = OpCrnor;
+    CallTable[PPC_OP_CROR] = OpCror;
+    CallTable[PPC_OP_CRORC] = OpCrorc;
+    CallTable[PPC_OP_CRXOR] = OpCrxor;
+#if 0
+    CallTable[PPC_OP_DCBF] = OpDcbf;
+    CallTable[PPC_OP_DCBST] = OpDcbst;
+    CallTable[PPC_OP_DCBT] = OpDcbt;
+    CallTable[PPC_OP_DCBTST] = OpDcbtst;
+    CallTable[PPC_OP_DCBZ] = OpDcbz;
+#endif
+    CallTable[PPC_OP_DIVD] = OpDivd;
+    CallTable[PPC_OP_DIVDU] = OpDivdu;
+    CallTable[PPC_OP_DIVW] = OpDivw;
+    CallTable[PPC_OP_DIVWU] = OpDivwu;
+#if 0
+    CallTable[PPC_OP_ECIWX] = OpEciwx;
+    CallTable[PPC_OP_ECOWX] = OpEcowx;
+    CallTable[PPC_OP_EIEIO] = OpEieio;
+#endif
+    CallTable[PPC_OP_EQV] = OpEqv;
+    CallTable[PPC_OP_EXTSB] = OpExtsb;
+    CallTable[PPC_OP_EXTSH] = OpExtsh;
+    CallTable[PPC_OP_EXTSW] = OpExtsw;
+#if 0
+    CallTable[PPC_OP_FABS] = OpFabs;
+    CallTable[PPC_OP_FADD] = OpFadd;
+    CallTable[PPC_OP_FADDS] = OpFadds;
+    CallTable[PPC_OP_FCFID] = OpFcfid;
+    CallTable[PPC_OP_FCMPO] = OpFcmpo;
+    CallTable[PPC_OP_FCMPU] = OpFcmpu;
+    CallTable[PPC_OP_FCTID] = OpFctid;
+    CallTable[PPC_OP_FCTIDZ] = OpFctidz;
+    CallTable[PPC_OP_FCTIW] = OpFctiw;
+    CallTable[PPC_OP_FCTIWZ] = OpFctiwz;
+    CallTable[PPC_OP_FDIV] = OpFdiv;
+    CallTable[PPC_OP_FDIVS] = OpFdivs;
+    CallTable[PPC_OP_FMADD] = OpFmadd;
+    CallTable[PPC_OP_FMADDS] = OpFmadds;
+    CallTable[PPC_OP_FMR] = OpFmr;
+    CallTable[PPC_OP_FMSUB] = OpFmsub;
+    CallTable[PPC_OP_FMSUBS] = OpFmsubs;
+    CallTable[PPC_OP_FMUL] = OpFmul;
+    CallTable[PPC_OP_FMULS] = OpFmuls;
+    CallTable[PPC_OP_FNABS] = OpFnabs;
+    CallTable[PPC_OP_FNEG] = OpFneg;
+    CallTable[PPC_OP_FNMADD] = OpFnmadd;
+    CallTable[PPC_OP_FNMADDS] = OpFnmadds;
+    CallTable[PPC_OP_FNMSUB] = OpFnmsub;
+    CallTable[PPC_OP_FNMSUBS] = OpFnmsubs;
+    CallTable[PPC_OP_FRES] = OpFres;
+    CallTable[PPC_OP_FRSP] = OpFrsp;
+    CallTable[PPC_OP_FRSQRTE] = OpFrsqrte;
+    CallTable[PPC_OP_FSEL] = OpFsel;
+    CallTable[PPC_OP_FSQRT] = OpFsqrt;
+    CallTable[PPC_OP_FSQRTS] = OpFsqrts;
+    CallTable[PPC_OP_FSUB] = OpFsub;
+    CallTable[PPC_OP_FSUBS] = OpFsubs;
+    CallTable[PPC_OP_ICBI] = OpIcbi;
+    CallTable[PPC_OP_ISYNC] = OpIsync;
+#endif
+    CallTable[PPC_OP_LBZ] = OpLbz;
+    CallTable[PPC_OP_LBZU] = OpLbzu;
+    CallTable[PPC_OP_LBZUX] = OpLbzux;
+    CallTable[PPC_OP_LBZX] = OpLbzx;
+    CallTable[PPC_OP_LD] = OpLd;
+    CallTable[PPC_OP_LDARX] = OpLdarx;
+    CallTable[PPC_OP_LDU] = OpLdu;
+    CallTable[PPC_OP_LDUX] = OpLdux;
+    CallTable[PPC_OP_LDX] = OpLdx;
+    CallTable[PPC_OP_LFD] = OpLfd;
+    CallTable[PPC_OP_LFDU] = OpLfdu;
+    CallTable[PPC_OP_LFDUX] = OpLfdux;
+    CallTable[PPC_OP_LFDX] = OpLfdx;
+    CallTable[PPC_OP_LFS] = OpLfs;
+    CallTable[PPC_OP_LFSU] = OpLfsu;
+    CallTable[PPC_OP_LFSUX] = OpLfsux;
+    CallTable[PPC_OP_LFSX] = OpLfsx;
+    CallTable[PPC_OP_LHA] = OpLha;
+    CallTable[PPC_OP_LHAU] = OpLhau;
+    CallTable[PPC_OP_LHAUX] = OpLhaux;
+    CallTable[PPC_OP_LHAX] = OpLhax;
+    CallTable[PPC_OP_LHBRX] = OpLhbrx;
+    CallTable[PPC_OP_LHZ] = OpLhz;
+    CallTable[PPC_OP_LHZU] = OpLhzu;
+    CallTable[PPC_OP_LHZUX] = OpLhzux;
+    CallTable[PPC_OP_LHZX] = OpLhzx;
+    CallTable[PPC_OP_LMW] = OpLmw;
+    CallTable[PPC_OP_LSWI] = OpLswi;
+    CallTable[PPC_OP_LSWX] = OpLswx;
+    CallTable[PPC_OP_LWA] = OpLwa;
+    CallTable[PPC_OP_LWARX] = OpLwarx;
+    CallTable[PPC_OP_LWAUX] = OpLwaux;
+    CallTable[PPC_OP_LWAX] = OpLwax;
+    CallTable[PPC_OP_LWBRX] = OpLwbrx;
+    CallTable[PPC_OP_LWZ] = OpLwz;
+    CallTable[PPC_OP_LWZU] = OpLwzu;
+    CallTable[PPC_OP_LWZUX] = OpLwzux;
+    CallTable[PPC_OP_LWZX] = OpLwzx;
+#if 0
+    CallTable[PPC_OP_MCRF] = OpMcrf;
+    CallTable[PPC_OP_MCRFS] = OpMcrfs;
+    CallTable[PPC_OP_MFCR] = OpMfcr;
+    CallTable[PPC_OP_MFFS] = OpMffs;
+    CallTable[PPC_OP_MFMSR] = OpMfmsr;
+#endif
+    CallTable[PPC_OP_MFSPR] = OpMfspr;
+#if 0
+    CallTable[PPC_OP_MFSR] = OpMfsr;
+    CallTable[PPC_OP_MFSRIN] = OpMfsrin;
+    CallTable[PPC_OP_MFTB] = OpMftb;
+    CallTable[PPC_OP_MTCRF] = OpMtcrf;
+    CallTable[PPC_OP_MTFSB0] = OpMtfsb0;
+    CallTable[PPC_OP_MTFSB1] = OpMtfsb1;
+    CallTable[PPC_OP_MTFSF] = OpMtfsf;
+    CallTable[PPC_OP_MTFSFI] = OpMtfsfi;
+    CallTable[PPC_OP_MTMSR] = OpMtmsr;
+    CallTable[PPC_OP_MTMSRD] = OpMtmsrd;
+#endif
+    CallTable[PPC_OP_MTSPR] = OpMtspr;
+#if 0
+    CallTable[PPC_OP_MTSR] = OpMtsr;
+    CallTable[PPC_OP_MTSRIN] = OpMtsrin;
+    CallTable[PPC_OP_MULHD] = OpMulthd;
+    CallTable[PPC_OP_MULHDU] = OpMulthdu;
+    CallTable[PPC_OP_MULHW] = OpMulhw;
+    CallTable[PPC_OP_MULHWU] = OpMulhwu;
+    CallTable[PPC_OP_MULLD] = OpMulld;
+    CallTable[PPC_OP_MULLDO] = OpMulldo;
+#endif
+    CallTable[PPC_OP_MULLI] = OpMulli;
+    CallTable[PPC_OP_MULLW] = OpMullw;
+#if 0
+    CallTable[PPC_OP_NAND] = OpNand;
+    CallTable[PPC_OP_NEG] = OpNeg;
+    CallTable[PPC_OP_NEGO] = OpNego;
+    CallTable[PPC_OP_NOR] = OpNor;
+#endif
+    CallTable[PPC_OP_OR] = OpOr;
+    CallTable[PPC_OP_ORC] = OpOrc;
+    CallTable[PPC_OP_ORI] = OpOri;
+    CallTable[PPC_OP_ORIS] = OpOris;
+#if 0
+    CallTable[PPC_OP_RFID] = OpRfid;
+    CallTable[PPC_OP_RLDCL] = OpRldcl;
+    CallTable[PPC_OP_RLDCR] = OpRldcr;
+    CallTable[PPC_OP_RLDIC] = OpRldic;
+    CallTable[PPC_OP_RLDICL] = OpRldicl;
+    CallTable[PPC_OP_RLDICR] = OpRldicr;
+    CallTable[PPC_OP_RLDIMI] = OpRldimi;
+#endif
+    CallTable[PPC_OP_RLWIMI] = OpRlwimi;
+    CallTable[PPC_OP_RLWINM] = OpRlwinm;
+#if 0
+    CallTable[PPC_OP_RLWNM] = OpRlwnm;
+    CallTable[PPC_OP_SC] = OpSc;
+    CallTable[PPC_OP_SLBIA] = OpSlbia;
+    CallTable[PPC_OP_SLBIE] = OpSlbie;
+    CallTable[PPC_OP_SLBMFEE] = OpSlbmfee;
+    CallTable[PPC_OP_SLBMFEV] = OpSlbmfev;
+    CallTable[PPC_OP_SLBMTE] = OpSlbmte;
+#endif
+    CallTable[PPC_OP_SLD] = OpSld;
+    CallTable[PPC_OP_SLW] = OpSlw;
+#if 0
+    CallTable[PPC_OP_SRAD] = OpSrad;
+    CallTable[PPC_OP_SRADI] = OpSradi;
+    CallTable[PPC_OP_SRAW] = OpSraw;
+#endif
+    CallTable[PPC_OP_SRAWI] = OpSrawi;
+#if 0
+    CallTable[PPC_OP_SRD] = OpSrd;
+    CallTable[PPC_OP_SRW] = OpSrw;
+#endif
+    CallTable[PPC_OP_STB] = OpStb;
+    CallTable[PPC_OP_STBU] = OpStbu;
+    CallTable[PPC_OP_STBUX] = OpStbux;
+    CallTable[PPC_OP_STBX] = OpStbx;
+    CallTable[PPC_OP_STD] = OpStd;      // includes STDU
+    CallTable[PPC_OP_STDCX_UP] = OpStdcx;
+    CallTable[PPC_OP_STDUX] = OpStdux;
+    CallTable[PPC_OP_STDX] = OpStdx;
+    CallTable[PPC_OP_STFD] = OpStfd;
+    CallTable[PPC_OP_STFDU] = OpStfdu;
+    CallTable[PPC_OP_STFDUX] = OpStfdux;
+    CallTable[PPC_OP_STFDX] = OpStfdx;
+    CallTable[PPC_OP_STFIWX] = OpStfiwx;
+    CallTable[PPC_OP_STFS] = OpStfs;
+    CallTable[PPC_OP_STFSU] = OpStfsu;
+    CallTable[PPC_OP_STFSUX] = OpStfsux;
+    CallTable[PPC_OP_STFSX] = OpStfsx;
+    CallTable[PPC_OP_STH] = OpSth;
+    CallTable[PPC_OP_STHBRX] = OpSthbrx;
+    CallTable[PPC_OP_STHU] = OpSthu;
+    CallTable[PPC_OP_STHUX] = OpSthux;
+    CallTable[PPC_OP_STHX] = OpSthx;
+    CallTable[PPC_OP_STMW] = OpStmw;
+    CallTable[PPC_OP_STSWI] = OpStswi;
+    CallTable[PPC_OP_STSWX] = OpStswx;
+    CallTable[PPC_OP_STW] = OpStw;
+    CallTable[PPC_OP_STWBRX] = OpStwbrx;
+    CallTable[PPC_OP_STWCX_UP] = OpStwcx;
+    CallTable[PPC_OP_STWU] = OpStwu;
+    CallTable[PPC_OP_STWUX] = OpStwux;
+    CallTable[PPC_OP_STWX] = OpStwx;
+    CallTable[PPC_OP_SUBF] = OpSubf;
+    CallTable[PPC_OP_SUBFC] = OpSubfc;
+    CallTable[PPC_OP_SUBFE] = OpSubfe;
+    CallTable[PPC_OP_SUBFIC] = OpSubfic;
+    CallTable[PPC_OP_SUBFME] = OpSubfme;
+    CallTable[PPC_OP_SUBFZE] = OpSubfze;
+#if 0
+    CallTable[PPC_OP_SYNC] = OpSync;
+    CallTable[PPC_OP_TD] = OpTd;
+    CallTable[PPC_OP_TDI] = OpTdi;
+    CallTable[PPC_OP_TLBIA] = OpTlbia;
+    CallTable[PPC_OP_TLBIE] = OpTlbie;
+    CallTable[PPC_OP_TLBIEL] = OpTlbiel;
+    CallTable[PPC_OP_TLBSYNC] = OpTlbsync;
+    CallTable[PPC_OP_TW] = OpTw;
+#endif
+    CallTable[PPC_OP_TWI] = OpTwi;
+    CallTable[PPC_OP_XOR] = OpXor;
+    CallTable[PPC_OP_XORI] = OpXori;
+    CallTable[PPC_OP_XORIS] = OpXoris;
+
+    CallTable[PPC_OP_INVALID] = OpInvalid;
+
+    TablesDone = true;
 }

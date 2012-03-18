@@ -1,3 +1,11 @@
+/**
+ * x360emu - An emulator for the Xbox 360 gaming system.
+ * Copyright (C) 2012 - The x360emu Project
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see http://www.gnu.org/licenses/.
+ */
+
 #include <Sha1.h>
 
 Sha1::Sha1()
@@ -11,17 +19,17 @@ Sha1::Sha1()
  */
 void Sha1::Reset()
 {
-	Length = 0;
-	Message_Block_Index = 0;
+    Length = 0;
+    Message_Block_Index = 0;
 
-	H[0] = 0x67452301;
-	H[1] = 0xEFCDAB89;
-	H[2] = 0x98BADCFE;
-	H[3] = 0x10325476;
-	H[4] = 0xC3D2E1F0;
+    H[0] = 0x67452301;
+    H[1] = 0xEFCDAB89;
+    H[2] = 0x98BADCFE;
+    H[3] = 0x10325476;
+    H[4] = 0xC3D2E1F0;
 
-	Computed = false;
-	Corrupted = false;
+    Computed = false;
+    Corrupted = false;
 }
 
 /*  
@@ -65,15 +73,15 @@ void Sha1::Input(const u8 *message_array, u32 length)
     {
         Length += 8;
         if (Length == 0)
-			Corrupted = true;	// Too long
-		
-		Message_Block[Message_Block_Index++] = (*message_array & 0xFF);
+            Corrupted = true;   // Too long
+        
+        Message_Block[Message_Block_Index++] = (*message_array & 0xFF);
 
         if (Message_Block_Index == 64)
-		{
+        {
             ProcessMessageBlock();
-			Message_Block_Index = 0;
-		}
+            Message_Block_Index = 0;
+        }
 
         message_array++;
     }
@@ -85,18 +93,18 @@ void Sha1::Input(const u8 *message_array, u32 length)
  */
 void Sha1::ProcessMessageBlock()
 {
-	// Constants defined for SHA-1
+    // Constants defined for SHA-1
     const u32 K[] = {
-		0x5A827999,
-		0x6ED9EBA1,
-		0x8F1BBCDC,
-		0xCA62C1D6
-	};
+        0x5A827999,
+        0x6ED9EBA1,
+        0x8F1BBCDC,
+        0xCA62C1D6
+    };
 
-    int t;				// Loop counter
-    u32 temp;			// Temporary word value
-    u32 W[80];			// Word sequence
-    u32 A, B, C, D, E;	// Word buffers
+    int t;              // Loop counter
+    u32 temp;           // Temporary word value
+    u32 W[80];          // Word sequence
+    u32 A, B, C, D, E;  // Word buffers
 
     /*
      *  Initialize the first 16 words in the array W
