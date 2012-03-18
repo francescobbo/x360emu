@@ -1,5 +1,3 @@
-#pragma once
-
 /*
  * Adapted from rijndael-alg-fst.c 3.0 made available in the public domain from:
  * Vincent Rijmen <vincent.rijmen@esat.kuleuven.ac.be>
@@ -8,6 +6,8 @@
  *
  * You can find the original at: http://www.cs.ucdavis.edu/~rogaway/ocb/ocb-ref/
  */
+
+#pragma once
 
 #include <Types.h>
 

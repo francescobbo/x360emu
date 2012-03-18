@@ -1,3 +1,11 @@
+/**
+ * x360emu - An emulator for the Xbox 360 gaming system.
+ * Copyright (C) 2012 - The x360emu Project
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see http://www.gnu.org/licenses/.
+ */
+
 #pragma once
 
 #include "Xenon.h"
@@ -24,12 +32,16 @@ public:
 	void Stop();
 
 private:
-	void SetupTables();
+	typedef void (*handler)(Xenon::CpuState *param);
+
+	static void SetupCallTable();
+	static handler CallTable[PPC_OP_LAST];
 
 	Xenon::CpuState &xState;
-	XenonParser xp;
 
 	/* OpCode handlers */
+	static void OpInvalid(Xenon::CpuState *xState);
+
 	static void OpAdd(Xenon::CpuState *xState);
 	static void OpAddo(Xenon::CpuState *xState);
 	static void OpAddc(Xenon::CpuState *xState);

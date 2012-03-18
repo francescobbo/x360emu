@@ -122,9 +122,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="XenonParser.cpp">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">C:\Users\AlfaOmega08\Documents\Visual Studio 11\Projects\x360emu\Framework;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
+    <ClCompile Include="XenonParser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="XenonParser.h" />
