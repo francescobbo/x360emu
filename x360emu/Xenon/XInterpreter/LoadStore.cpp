@@ -335,6 +335,17 @@ void XInterpreter::OpStbx(Xenon::CpuState *xState)
 
 void XInterpreter::OpStd(Xenon::CpuState *xState)
 {
+	/* Check whether this is STD or STDU */
+	if (xState->CurrentInstruction.hex & 1)
+	{
+		/* GetEAu should be used but we got a bit set in the SIMM_16 for this opCode, that has to be removed! */
+		u32 Address = (u32) (rGPR[INSTR.RS] + (((s64) INSTR.SIMM_16) & ~1));
+		Memory::Write64(Address, rGPR[INSTR.RS]);
+		rGPR[INSTR.RA] = Address;
+		return;
+	}
+
+	/* STD */
 	Memory::Write64(GetEA(xState), rGPR[INSTR.RS]);
 }
 
@@ -363,14 +374,6 @@ void XInterpreter::OpStdcx(Xenon::CpuState *xState)
 		xState->SetCrField(0, XER.SO);
 	}
 #endif
-}
-
-void XInterpreter::OpStdu(Xenon::CpuState *xState)
-{
-	/* GetEAu should be used but we got a bit set in the SIMM_16 for this opCode, that has to be removed! */
-	u32 Address = (u32) (rGPR[INSTR.RS] + (((s64) INSTR.SIMM_16) & ~1));
-    Memory::Write64(Address, rGPR[INSTR.RS]);
-	rGPR[INSTR.RA] = Address;
 }
 
 void XInterpreter::OpStdux(Xenon::CpuState *xState)

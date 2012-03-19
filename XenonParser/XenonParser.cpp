@@ -169,6 +169,7 @@ OpcodeInfo Table31[] =
 	{ 149, PPC_OP_STDX, "stdx", 0, 1 },
 	{ 150, PPC_OP_STWCX_UP, "stwcx.", 0, 1 },
 	{ 151, PPC_OP_STWX, "stwx", 0, 1 },
+	{ 178, PPC_OP_MTMSRD, "mtmsrd", 0, 1 },
 	{ 181, PPC_OP_STDUX, "stdux", 0, 1 },
 	{ 183, PPC_OP_STWUX, "stwux", 0, 1 },
 
