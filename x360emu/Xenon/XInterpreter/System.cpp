@@ -16,7 +16,6 @@ void XInterpreter::OpCrand(Xenon::CpuState *xState)
     xState->SetCrBit(INSTR.CRBD, xState->GetCrBit(INSTR.CRBA) & xState->GetCrBit(INSTR.CRBB));
 }
 
-
 void XInterpreter::OpCrandc(Xenon::CpuState *xState)
 {
     xState->SetCrBit(INSTR.CRBD, xState->GetCrBit(INSTR.CRBA) & (1 ^ xState->GetCrBit(INSTR.CRBB)));
@@ -52,10 +51,38 @@ void XInterpreter::OpCrxor(Xenon::CpuState *xState)
     xState->SetCrBit(INSTR.CRBD, (xState->GetCrBit(INSTR.CRBA) ^ xState->GetCrBit(INSTR.CRBB)));
 }
 
+void XInterpreter::OpMfmsr(Xenon::CpuState *xState)
+{
+    rGPR[INSTR.RD] = xState->msr;
+}
+
 void XInterpreter::OpMfspr(Xenon::CpuState *xState)
 {
     u32 iIndex = ((INSTR.SPR & 0x1F) << 5) + ((INSTR.SPR >> 5) & 0x1F);
     rGPR[INSTR.RD] = rSPR[iIndex];
+}
+
+void XInterpreter::OpMftb(Xenon::CpuState *xState)
+{
+    int iIndex = (INSTR.TBR >> 5) | ((INSTR.TBR & 0x1F) << 5);
+    rGPR[INSTR.RD] = xState->spr[iIndex];
+}
+
+void XInterpreter::OpMtmsrd(Xenon::CpuState *xState)
+{
+    if (INSTR.L_MSR)
+    {
+        xState->msr &= ~0xFFFE;
+        xState->msr |= rGPR[INSTR.RS] & 0xFFFE;
+    }
+    else
+    {
+        xState->msr &= ~0x6FFFFFFFFFFF6FCF;
+        xState->msr |= rGPR[INSTR.RS] & 0x6FFFFFFFFFFF6FCF;
+
+        xState->msr |= (rGPR[INSTR.RS] & 0xC000000000000000) ? 0x8000000000000000 : 0;
+        xState->msr |= (rGPR[INSTR.RS] & 0x4010) ? 0x10 : 0;
+    }
 }
 
 void XInterpreter::OpMtspr(Xenon::CpuState *xState)

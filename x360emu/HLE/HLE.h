@@ -81,4 +81,7 @@ namespace HLE
 	void RtlInitializeCriticalSectionAndSpinCount(Xenon::CpuState *xState);
 	void RtlEnterCriticalSection(Xenon::CpuState *xState);
 	void RtlLeaveCriticalSection(Xenon::CpuState *xState);
+
+	void KeBugCheck(Xenon::CpuState *xState);
+	void KeBugCheckEx(Xenon::CpuState *xState);
 }

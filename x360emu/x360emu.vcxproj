@@ -161,6 +161,7 @@
     <ClCompile Include="Hardware.cpp" />
     <ClCompile Include="HLE\Critical.cpp" />
     <ClCompile Include="HLE\LinkLibraries.cpp" />
+    <ClCompile Include="HLE\Misc.cpp" />
     <ClCompile Include="HLE\Structs.cpp" />
     <ClCompile Include="HLE\VMem.cpp" />
     <ClCompile Include="Memory.cpp" />

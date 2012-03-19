@@ -7,6 +7,7 @@
  */
 
 #include <Windows.h>
+#include <Exceptions.h>
 #include <ntstatus.h>
 #include "../Xenon/Xenon.h"
 #include "../Memory.h"
@@ -38,14 +39,15 @@ namespace HLE
 
     /**
      * NTSTATUS NtAllocateVirtualMemory(PVOID *BaseAddress, PSIZE_T RegionSize, int AllocationType, int Protect, int Unknown);
-     * We can safely ignore the @Protect argument, as it will be respected by the game itself (infact games work on the Xbox)
+     * We can safely ignore the @Protect (r6) argument, as it will be respected by the game itself (infact games work on the Xbox)
      */
     void NtAllocateVirtualMemory(Xenon::CpuState *xState)
     {
         uint32_t BaseAddress = xState->gpr[3];
         uint32_t RegionSize = xState->gpr[4];
         uint32_t AllocationType = xState->gpr[5];
-        uint32_t Unknown = xState->gpr[7];
+        /* ?? */
+        uint32_t ZeroBits = xState->gpr[7];
 
         uint32_t RealBase = Memory::Read32(BaseAddress);
         uint32_t RealSize = Memory::Read32(RegionSize);
@@ -250,3 +252,4 @@ namespace HLE
         xState->gpr[3] = STATUS_SUCCESS;
     }
 }
+

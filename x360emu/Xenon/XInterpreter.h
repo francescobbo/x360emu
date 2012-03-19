@@ -20,6 +20,8 @@
 #define LR		xState->spr[8]
 #define CTR		xState->spr[9]
 #define XER		((RegXER &) xState->spr[1])
+#define TL		xState->spr[268]
+#define TU		xState->spr[269]
 
 class XInterpreter : public XenonEmulator
 {
@@ -237,7 +239,6 @@ private:
 	static void OpStbx(Xenon::CpuState *xState);
 	static void OpStd(Xenon::CpuState *xState);
 	static void OpStdcx(Xenon::CpuState *xState);
-	static void OpStdu(Xenon::CpuState *xState);
 	static void OpStdux(Xenon::CpuState *xState);
 	static void OpStdx(Xenon::CpuState *xState);
 	static void OpStfd(Xenon::CpuState *xState);

@@ -53,6 +53,8 @@ namespace Xenon
 		bool ReserveW;
 		u32 ReserveAddressW;
 
+		int CyclesSinceUpdate;
+
 		bool GetCrBit(int bit)
 		{
 			// return (crFast[bit >> 2] & (8 >> (bit & 3));

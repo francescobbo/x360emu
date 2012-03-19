@@ -10,69 +10,69 @@
 
 OptionalHeader::OptionalHeader(OptHeaderKeys key)
 {
-    ImageKey = key;
+	ImageKey = key;
 }
 
 void ExecutionId::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    MediaId = stream.ReadInt32();
-    Version = stream.ReadInt32();
-    BaseVersion = stream.ReadInt32();
-    TitleId = stream.ReadInt32();
-    Platform = stream.ReadByte();
-    ExecutableType = stream.ReadByte();
-    DiscNumber = stream.ReadByte();
-    NumberOfDiscs = stream.ReadByte();
-    SavegameId = stream.ReadInt32();
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	MediaId = stream.ReadInt32();
+	Version = stream.ReadInt32();
+	BaseVersion = stream.ReadInt32();
+	TitleId = stream.ReadInt32();
+	Platform = stream.ReadByte();
+	ExecutableType = stream.ReadByte();
+	DiscNumber = stream.ReadByte();
+	NumberOfDiscs = stream.ReadByte();
+	SavegameId = stream.ReadInt32();
 }
 
 void GameRatings::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    stream.ReadBytes(Ratings, 64);
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	stream.ReadBytes(Ratings, 64);
 }
 
 void OriginalPEName::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    int size = stream.ReadInt32();
-    stream.ReadStringN(Name, size - 4);
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	int size = stream.ReadInt32();
+	stream.ReadStringN(Name, size - 4);
 }
 
 void BaseFileAddress::Read(BinaryReaderBE &)
 {
-    BaseAddress = Data;
+	BaseAddress = Data;
 }
 
 void BaseFileEntryPoint::Read(BinaryReaderBE &)
 {
-    EntryPoint = Data;
+	EntryPoint = Data;
 }
 
 void BaseFileChecksumAndTimeStamp::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    Checksum = stream.ReadUInt32();
-    Timestamp = stream.ReadUInt32();
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	Checksum = stream.ReadUInt32();
+	Timestamp = stream.ReadUInt32();
 }
 
 void BaseFileDefaultStackSize::Read(BinaryReaderBE &)
 {
-    DefaultStackSize = Data;
+	DefaultStackSize = Data;
 }
 
 void BaseFileFormat::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    InfoSize = stream.ReadInt32();
-    EncryptionType = (EncryptionTypes) stream.ReadInt16();
-    CompressionType = (CompressionTypes) stream.ReadInt16();
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	InfoSize = stream.ReadInt32();
+	EncryptionType = (EncryptionTypes) stream.ReadInt16();
+	CompressionType = (CompressionTypes) stream.ReadInt16();
 
-    if (CompressionType == CompressionTypes::NotCompressed)
-        RawFormat.Read(stream, InfoSize - 8);
-    else
-        CompressedFormat.Read(stream);
+	if (CompressionType == CompressionTypes::NotCompressed)
+		RawFormat.Read(stream, InfoSize - 8);
+	else
+		CompressedFormat.Read(stream);
 }
 
 void ImportLibraries::ImportLib::Read(BinaryReaderBE &stream)
@@ -99,8 +99,8 @@ void ImportLibraries::Read(BinaryReaderBE &stream)
         
     for (int x = 0; x < LibraryCount; x++)
     {
-        stream.ReadString(LibNames[x]);
-        stream.BaseStream.Seek((4 - (stream.BaseStream.Position() % 4)) & 3, SeekDirection::Current);
+		stream.ReadString(LibNames[x]);
+		stream.BaseStream.Seek((4 - (stream.BaseStream.Position() % 4)) & 3, SeekDirection::Current);
     }
  
     Libs = new ImportLib[LibraryCount];
@@ -110,67 +110,67 @@ void ImportLibraries::Read(BinaryReaderBE &stream)
 
 void StaticLibraries::Library::Read(BinaryReaderBE &stream)
 {
-    stream.ReadStringN(Name, 8);
-    VersionMajor = stream.ReadInt16();
-    VersionMinor = stream.ReadInt16();
-    VersionBuild = stream.ReadInt16();
-    ApprovalType = (ApprovalTypes)(stream.ReadByte() >> 5);
-    VersionQfe = stream.ReadByte();
+	stream.ReadStringN(Name, 8);
+	VersionMajor = stream.ReadInt16();
+	VersionMinor = stream.ReadInt16();
+	VersionBuild = stream.ReadInt16();
+	ApprovalType = (ApprovalTypes)(stream.ReadByte() >> 5);
+	VersionQfe = stream.ReadByte();
 }
 
 void StaticLibraries::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    sectionSize = stream.ReadInt32();
-    int lcount = (sectionSize - 4) / 0x10;
-    Libraries = new Library[lcount];
-    for (int x = 0; x < lcount; x++)
-        Libraries[x].Read(stream);
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	sectionSize = stream.ReadInt32();
+	int lcount = (sectionSize - 4) / 0x10;
+	Libraries = new Library[lcount];
+	for (int x = 0; x < lcount; x++)
+		Libraries[x].Read(stream);
 }
 
 void Xbox360Logo::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    SectionSize = stream.ReadInt32();
-    ImageLength = stream.ReadInt32();
-    ImageData = new uint8_t[ImageLength];
-    stream.ReadBytes(ImageData, ImageLength);
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	SectionSize = stream.ReadInt32();
+	ImageLength = stream.ReadInt32();
+	ImageData = new uint8_t[ImageLength];
+	stream.ReadBytes(ImageData, ImageLength);
 }
 
 void TLSInfo::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    NumberOfSlots = stream.ReadInt32();
-    RawDataAddress = stream.ReadInt32();
-    DataSize = stream.ReadInt32();
-    RawDataSize = stream.ReadInt32();
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	NumberOfSlots = stream.ReadInt32();
+	RawDataAddress = stream.ReadInt32();
+	DataSize = stream.ReadInt32();
+	RawDataSize = stream.ReadInt32();
 }
 
 void LANKey::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    stream.ReadBytes(Key, 16);
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	stream.ReadBytes(Key, 16);
 }
 
 XexResources::~XexResources()
 {
-    if (Resources)
-        delete[] Resources;
+	if (Resources)
+		delete[] Resources;
 }
 
 void XexResources::Resource::Read(BinaryReaderBE &stream)
 {
-    stream.ReadStringN(Name, 8);
-    Address = stream.ReadInt32();
-    Size = stream.ReadInt32();
+	stream.ReadStringN(Name, 8);
+	Address = stream.ReadInt32();
+	Size = stream.ReadInt32();
 }
 
 void XexResources::Read(BinaryReaderBE &stream)
 {
-    stream.BaseStream.Seek(Data, SeekDirection::Begin);
-    int length = stream.ReadInt32();
-    Count = (length - 4) / 16;
-    Resources = new Resource[Count];
-    for (int i = 0; i < Count; i++)
-        Resources[i].Read(stream);
+	stream.BaseStream.Seek(Data, SeekDirection::Begin);
+	int length = stream.ReadInt32();
+	Count = (length - 4) / 16;
+	Resources = new Resource[Count];
+	for (int i = 0; i < Count; i++)
+		Resources[i].Read(stream);
 }

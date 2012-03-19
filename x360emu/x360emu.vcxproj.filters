@@ -95,6 +95,9 @@
     <ClCompile Include="HLE\Critical.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="HLE\Misc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="x360emu.rc">

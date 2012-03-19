@@ -45,16 +45,32 @@ void XInterpreter::Run()
             xState.CurrentInstruction.hex = Memory::Read32(xState.pc);
             OpcodeInfo *info = GetInfo(xState.CurrentInstruction.hex);
             CallTable[info->Id](&xState);
-//          xp.Parse(xState.CurrentInstruction.hex);
 
             xState.pc = xState.npc;
+            xState.CyclesSinceUpdate += info->Cycles;
+
+            /* The Xbox 360 updates the TB each 64 cycles, or 50,000,000 times/s */
+            if (xState.CyclesSinceUpdate >= 64)
+            {
+                /* Since we're LittleEndian, and TU is just after TL, we can use it as 64bit */
+                u64 *tb = (u64 *) &xState.spr[268];
+                (*tb)++;
+
+                /* Since the timer period is a power of two, instead of "modulo", we use "and" (faster) */
+                xState.CyclesSinceUpdate &= 63;
+            }
         }
     }
     catch (Exception &exc)
     {
         cout << "Got Exception (" << exc.GetMessage() << ") at PC = 0x" << hex << xState.pc << endl;
         cout << "Backtrace:\n";
-        for (int i = 0; i < Branches.size(); i++)
+
+        int start = 0;
+        if (Branches.size() > 10)
+            start = Branches.size() - 10;
+
+        for (int i = start; i < Branches.size(); i++)
         {
             cout << Branches[i];
             
@@ -67,7 +83,12 @@ void XInterpreter::Run()
     {
         cout << "Got Exception (Unknown OpCode?) at PC = 0x" << hex << xState.pc << endl;
         cout << "Backtrace:\n";
-        for (int i = 0; i < Branches.size(); i++)
+
+        int start = 0;
+        if (Branches.size() > 10)
+            start = Branches.size() - 10;
+
+        for (int i = start; i < Branches.size(); i++)
         {
             cout << Branches[i];
             
@@ -243,21 +264,23 @@ void XInterpreter::SetupCallTable()
     CallTable[PPC_OP_MCRFS] = OpMcrfs;
     CallTable[PPC_OP_MFCR] = OpMfcr;
     CallTable[PPC_OP_MFFS] = OpMffs;
-    CallTable[PPC_OP_MFMSR] = OpMfmsr;
 #endif
+    CallTable[PPC_OP_MFMSR] = OpMfmsr;
     CallTable[PPC_OP_MFSPR] = OpMfspr;
 #if 0
     CallTable[PPC_OP_MFSR] = OpMfsr;
     CallTable[PPC_OP_MFSRIN] = OpMfsrin;
+#endif
     CallTable[PPC_OP_MFTB] = OpMftb;
+#if 0
     CallTable[PPC_OP_MTCRF] = OpMtcrf;
     CallTable[PPC_OP_MTFSB0] = OpMtfsb0;
     CallTable[PPC_OP_MTFSB1] = OpMtfsb1;
     CallTable[PPC_OP_MTFSF] = OpMtfsf;
     CallTable[PPC_OP_MTFSFI] = OpMtfsfi;
     CallTable[PPC_OP_MTMSR] = OpMtmsr;
-    CallTable[PPC_OP_MTMSRD] = OpMtmsrd;
 #endif
+    CallTable[PPC_OP_MTMSRD] = OpMtmsrd;
     CallTable[PPC_OP_MTSPR] = OpMtspr;
 #if 0
     CallTable[PPC_OP_MTSR] = OpMtsr;
@@ -271,12 +294,9 @@ void XInterpreter::SetupCallTable()
 #endif
     CallTable[PPC_OP_MULLI] = OpMulli;
     CallTable[PPC_OP_MULLW] = OpMullw;
-#if 0
     CallTable[PPC_OP_NAND] = OpNand;
     CallTable[PPC_OP_NEG] = OpNeg;
-    CallTable[PPC_OP_NEGO] = OpNego;
     CallTable[PPC_OP_NOR] = OpNor;
-#endif
     CallTable[PPC_OP_OR] = OpOr;
     CallTable[PPC_OP_ORC] = OpOrc;
     CallTable[PPC_OP_ORI] = OpOri;

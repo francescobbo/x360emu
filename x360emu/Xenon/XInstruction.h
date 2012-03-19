@@ -220,7 +220,13 @@ union XInstruction
 		u32 FM		:   8;
 		u32			:   7;
 	};
-
+	/* MTMSRD */
+	struct
+	{
+		u32			:	16;
+		u32  L_MSR	:	1;
+		u32			:	15;
+	};
 	struct
 	{
 		u32 dummyX	:   11;
