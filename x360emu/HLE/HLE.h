@@ -84,4 +84,5 @@ namespace HLE
 
 	void KeBugCheck(Xenon::CpuState *xState);
 	void KeBugCheckEx(Xenon::CpuState *xState);
+	void KeQueryPerformanceFrequency(Xenon::CpuState *xState);
 }

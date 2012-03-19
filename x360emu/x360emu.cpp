@@ -218,20 +218,19 @@ int APIENTRY wWinMain( HINSTANCE hInstance, HINSTANCE, LPTSTR, int nCmdShow)
 #include "Hardware.h"
 #include "HLE/HLE.h"
 
-void BootExample()
+void BootXex(std::string xexFn)
 {
-	Hardware::Init();
-
 	try
 	{
-		XDVDFSReader xr("c:\\users\\alfaomega08\\desktop\\ac4-xbx.iso", false);
-		xr.ExtractOne("default.xex", "\\default.xex");
-	
-		FileStream stream("default.xex", FileMode::Open, FileAccess::Read);
+		Hardware::Init();
+
+		FileStream stream(xexFn, FileMode::Open, FileAccess::Read);
 		BinaryReaderBE xex(stream);
+
 		XexParser xp(xex);
 		xp.ExtractBaseFile("xbxExec.exe");
-		xp.ExtractResource(xp.GetResourcesList()[0], "xbxExec.exe", "resources.xbdf");
+//		std::vector<XexResources::r
+//		xp.ExtractResource(xp.GetResourcesList()[0], "xbxExec.exe", "resources.xbdf");
 
 		XPeParser pp("xbxExec.exe", xp);
 		pp.Load();
@@ -244,6 +243,43 @@ void BootExample()
 	{
 		cout << "Catched exception: " << exc << endl;
 	}
+}
+
+void BootIso(std::string iso)
+{
+	try
+	{
+		XDVDFSReader xr(iso, false);
+		xr.ExtractOne("default.xex", "\\default.xex");
+	}
+	catch (...)
+	{
+		throw;
+	}
+	
+	BootXex("default.xex");
+}
+
+LPSTR UnicodeToAnsi(LPCWSTR s)
+{
+	if (s == NULL)
+		return NULL;
+	int cw = lstrlenW(s);
+	if (cw == 0)
+	{
+		CHAR *psz = new CHAR[1];
+		*psz='\0';
+		return psz;
+	}
+
+	int cc = WideCharToMultiByte(CP_ACP,0,s,cw,NULL,0,NULL,NULL);
+	if (cc==0)
+		return NULL;
+	CHAR *psz = new CHAR[cc+1];
+	cc=WideCharToMultiByte(CP_ACP,0,s,cw,psz,cc,NULL,NULL);
+	if (cc==0) {delete[] psz;return NULL;}
+	psz[cc]='\0';
+	return psz;
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -261,8 +297,50 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		switch (wmId)
 		{
 		case ID_FILE_BOOTAC4:
-			BootExample();
+			BootIso("c:\\RealGame.iso");
 			break;
+		case ID_FILE_BOOTISO:
+			{
+				OPENFILENAME ofn;
+				WCHAR szFileName[MAX_PATH] = L"";
+
+				ZeroMemory(&ofn, sizeof(ofn));
+
+				ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
+				ofn.hwndOwner = hWnd;
+				ofn.lpstrFilter = L"ISO Files (*.iso)\0*.iso\0All Files (*.*)\0*.*\0";
+				ofn.lpstrFile = szFileName;
+				ofn.nMaxFile = MAX_PATH;
+				ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY|OFN_ALLOWMULTISELECT;
+				ofn.lpstrDefExt = L"iso";
+
+				if (GetOpenFileName(&ofn))
+				{
+					BootIso(UnicodeToAnsi(szFileName));
+				}
+				break;
+			}
+		case ID_FILE_BOOTXEX:
+			{
+				OPENFILENAME ofn;
+				WCHAR szFileName[MAX_PATH] = L"";
+
+				ZeroMemory(&ofn, sizeof(ofn));
+
+				ofn.lStructSize = sizeof(ofn); // SEE NOTE BELOW
+				ofn.hwndOwner = hWnd;
+				ofn.lpstrFilter = L"XEX Files (*.xex)\0*.xex\0All Files (*.*)\0*.*\0";
+				ofn.lpstrFile = szFileName;
+				ofn.nMaxFile = MAX_PATH;
+				ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY|OFN_ALLOWMULTISELECT;
+				ofn.lpstrDefExt = L"xex";
+
+				if (GetOpenFileName(&ofn))
+				{
+					BootXex(UnicodeToAnsi(szFileName));
+				}
+				break;
+			}
 		case IDM_EXIT:
 			DestroyWindow(hWnd);
 			break;

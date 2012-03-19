@@ -255,8 +255,21 @@ void XexParser::DecompressBaseFile(u8 *buffer, const char *path)
 	}
 	else if (bff->CompressionType == bff->NotCompressed)
 	{
-		/* Well this is really compressed, but using a rather dummy algorithm. Too lazy however... */
-		throw "Uncompressed TODO! Shame on me, I was too lazy to do it.";
+		/* Well this is really compressed, but using a rather dummy algorithm. */
+		RawBaseFile *rawBaseFile = &bff->RawFormat;
+		FileStream f(path, FileMode::Create, FileAccess::Write);
+		
+		for (int i = 0; i < rawBaseFile->NBlocks; i++)
+		{
+			u8 *zeros = new u8[rawBaseFile->Blocks[i].ZeroSize];
+			memset(zeros, 0, rawBaseFile->Blocks[i].ZeroSize);
+
+			f.Write(buffer, rawBaseFile->Blocks[i].DataSize);
+			f.Write(zeros, rawBaseFile->Blocks[i].ZeroSize);
+
+			buffer += rawBaseFile->Blocks[i].DataSize;
+			delete[] zeros;
+		}
 	}
 	else
 	{
