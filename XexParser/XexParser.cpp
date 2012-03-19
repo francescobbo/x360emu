@@ -114,6 +114,11 @@ void XexParser::Read()
 		 *
 		 * Once we got our decrypted Session key, it can be used to decrypt the
 		 * Base file.
+		 *
+		 * However there can be two "Retail Key"s. The second is the Devkey made
+		 * of all 0s. Actually I don't know how to check wheter a XEX was
+		 * encrypted using the DevKey or the Retail Key.
+		 * TODO: detect devkit XEXs and decrypt them correctly.
 		 */
 
 		u8 FileKey[16];

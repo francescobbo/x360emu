@@ -92,8 +92,8 @@ uintptr_t StructsPointer = 0;
 
 void BuildExportsTrees()
 {
-	XboxKrnlExports[0x5F] = (uint64_t) HLE::KeBugCheck;
-	XboxKrnlExports[0x60] = (uint64_t) HLE::KeBugCheckEx;
+	XboxKrnlExports[0x52] = (uint64_t) HLE::KeBugCheck;
+	XboxKrnlExports[0x53] = (uint64_t) HLE::KeBugCheckEx;
 	XboxKrnlExports[0x83] = (uint64_t) HLE::KeQueryPerformanceFrequency;
 	XboxKrnlExports[0xCC] = (uint64_t) HLE::NtAllocateVirtualMemory;
 	XboxKrnlExports[0xDC] = (uint64_t) HLE::NtFreeVirtualMemory;
