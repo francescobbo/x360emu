@@ -239,12 +239,14 @@ public:
 	};
 
 	RawBaseFileBlock *Blocks;
+	int NBlocks;
  
 	void Read(BinaryReaderBE &stream, int size)
 	{
-		Blocks = new RawBaseFileBlock[size / 8];
-		for (int x = 0; x < size / 8; x++)
-			Blocks[x].Read(stream);
+		NBlocks = size / 8;
+		Blocks = new RawBaseFileBlock[NBlocks];
+		for (int i = 0; i < NBlocks; i++)
+			Blocks[i].Read(stream);
 	}
 };
  

@@ -8,6 +8,7 @@
 
 #include "../XInterpreter.h"
 #include <iostream>
+#include <Exceptions.h>
 
 using namespace std;
 
@@ -103,6 +104,6 @@ void XInterpreter::OpTwi(Xenon::CpuState *xState)
         || (((u64) a < (u64) b) && (TO & 0x02))
         || (((u64) a > (u64) b) && (TO & 0x01)))
     {
-        throw "Oh shit! It's a TRAP!";
+        throw Exception("Oh shit! It's a TRAP!");
     }
 }
