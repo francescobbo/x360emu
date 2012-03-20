@@ -101,6 +101,7 @@ void BuildExportsTrees()
     XboxKrnlExports[0x12E] = (uint64_t) HLE::RtlInitializeCriticalSection;
     XboxKrnlExports[0x12F] = (uint64_t) HLE::RtlInitializeCriticalSectionAndSpinCount;
     XboxKrnlExports[0x130] = (uint64_t) HLE::RtlLeaveCriticalSection;
+    XboxKrnlExports[0x194] = (uint64_t) HLE::XexCheckExecutablePrivilege;
 }
 
 bool SetupVar(string libName, uint32_t exportId, uint32_t loc)

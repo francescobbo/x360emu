@@ -175,6 +175,7 @@
     <ClCompile Include="Xenon\XInterpreter.cpp" />
     <ClCompile Include="Xenon\Xenon.cpp" />
     <ClCompile Include="Xenon\XInterpreter\Branch.cpp" />
+    <ClCompile Include="Xenon\XInterpreter\Floats.cpp" />
     <ClCompile Include="Xenon\XInterpreter\Integer.cpp" />
     <ClCompile Include="Xenon\XInterpreter\LoadStore.cpp" />
     <ClCompile Include="Xenon\XInterpreter\System.cpp" />

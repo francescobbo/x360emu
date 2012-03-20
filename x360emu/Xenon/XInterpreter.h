@@ -15,6 +15,7 @@
 #define NPC		xState->npc
 #define rGPR	xState->gpr
 #define rFP		xState->fpr
+#define rFPD	*(double *) &xState->fpr
 #define rSPR	xState->spr
 #define INSTR	xState->CurrentInstruction
 #define LR		xState->spr[8]
