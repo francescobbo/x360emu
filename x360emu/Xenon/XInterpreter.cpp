@@ -188,7 +188,9 @@ void XInterpreter::SetupCallTable()
 	CallTable[PPC_OP_FABS] = OpFabs;
 	CallTable[PPC_OP_FADD] = OpFadd;
 	CallTable[PPC_OP_FADDS] = OpFadds;
+#endif
 	CallTable[PPC_OP_FCFID] = OpFcfid;
+#if 0
 	CallTable[PPC_OP_FCMPO] = OpFcmpo;
 	CallTable[PPC_OP_FCMPU] = OpFcmpu;
 	CallTable[PPC_OP_FCTID] = OpFctid;
@@ -196,14 +198,18 @@ void XInterpreter::SetupCallTable()
 	CallTable[PPC_OP_FCTIW] = OpFctiw;
 	CallTable[PPC_OP_FCTIWZ] = OpFctiwz;
 	CallTable[PPC_OP_FDIV] = OpFdiv;
+#endif
 	CallTable[PPC_OP_FDIVS] = OpFdivs;
+#if 0
 	CallTable[PPC_OP_FMADD] = OpFmadd;
 	CallTable[PPC_OP_FMADDS] = OpFmadds;
 	CallTable[PPC_OP_FMR] = OpFmr;
 	CallTable[PPC_OP_FMSUB] = OpFmsub;
 	CallTable[PPC_OP_FMSUBS] = OpFmsubs;
 	CallTable[PPC_OP_FMUL] = OpFmul;
+#endif
 	CallTable[PPC_OP_FMULS] = OpFmuls;
+#if 0
 	CallTable[PPC_OP_FNABS] = OpFnabs;
 	CallTable[PPC_OP_FNEG] = OpFneg;
 	CallTable[PPC_OP_FNMADD] = OpFnmadd;
@@ -211,7 +217,9 @@ void XInterpreter::SetupCallTable()
 	CallTable[PPC_OP_FNMSUB] = OpFnmsub;
 	CallTable[PPC_OP_FNMSUBS] = OpFnmsubs;
 	CallTable[PPC_OP_FRES] = OpFres;
+#endif
 	CallTable[PPC_OP_FRSP] = OpFrsp;
+#if 0
 	CallTable[PPC_OP_FRSQRTE] = OpFrsqrte;
 	CallTable[PPC_OP_FSEL] = OpFsel;
 	CallTable[PPC_OP_FSQRT] = OpFsqrt;

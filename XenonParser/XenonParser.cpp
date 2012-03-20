@@ -303,39 +303,39 @@ OpcodeInfo Table59[] =
 
 OpcodeInfo Table63[] =
 {
-	{ 0,   PPC_OP_FNMADDS, "fcmpu", 0, 1 },
-	{ 12,  PPC_OP_FNMADDS, "frspx", 0, 1 },
-	{ 14,  PPC_OP_FNMADDS, "fctiwx", 0, 1 },
-	{ 15,  PPC_OP_FNMADDS, "fctiwzx", 0, 1 },
-	{ 32,  PPC_OP_FNMADDS, "fcmpo", 0, 1 },
-	{ 38,  PPC_OP_FNMADDS, "mtfsb1x", 0, 3 },
-	{ 40,  PPC_OP_FNMADDS, "fnegx", 0, 1 },
-	{ 64,  PPC_OP_FNMADDS, "mcrfs", 0, 1 },
-	{ 70,  PPC_OP_FNMADDS, "mtfsb0x", 0, 3 },
-	{ 72,  PPC_OP_FNMADDS, "fmrx", 0, 1 },
-	{ 134, PPC_OP_FNMADDS, "mtfsfix", 0, 3 },
-	{ 136, PPC_OP_FNMADDS, "fnabsx", 0, 1 },
-	{ 264, PPC_OP_FNMADDS, "fabsx", 0, 1 },
-	{ 583, PPC_OP_FNMADDS, "mffsx", 0, 1 },
-	{ 711, PPC_OP_FNMADDS, "mtfsfx", 0, 3 },
-	{ 814, PPC_OP_FNMADDS, "fctid", 0, 1 },
-	{ 815, PPC_OP_FNMADDS, "fctidz", 0, 1 },
-	{ 846, PPC_OP_FNMADDS, "fcfid", 0, 1 },
+	{ 0,   PPC_OP_FCMPU, "fcmpu", 0, 1 },
+	{ 12,  PPC_OP_FRSP, "frsp", 0, 1 },
+	{ 14,  PPC_OP_FCTIW, "fctiw", 0, 1 },
+	{ 15,  PPC_OP_FCTIWZ, "fctiwz", 0, 1 },
+	{ 32,  PPC_OP_FCMPO, "fcmpo", 0, 1 },
+	{ 38,  PPC_OP_MTFSB1, "mtfsb1", 0, 3 },
+	{ 40,  PPC_OP_FNEG, "fneg", 0, 1 },
+	{ 64,  PPC_OP_MCRFS, "mcrfs", 0, 1 },
+	{ 70,  PPC_OP_MTFSB0, "mtfsb0", 0, 3 },
+	{ 72,  PPC_OP_FMR, "fmr", 0, 1 },
+	{ 134, PPC_OP_MTFSFI, "mtfsfi", 0, 3 },
+	{ 136, PPC_OP_FNABS, "fnabs", 0, 1 },
+	{ 264, PPC_OP_FABS, "fabs", 0, 1 },
+	{ 583, PPC_OP_MFFS, "mffs", 0, 1 },
+	{ 711, PPC_OP_MTFSF, "mtfsf", 0, 3 },
+	{ 814, PPC_OP_FCTID, "fctid", 0, 1 },
+	{ 815, PPC_OP_FCTIDZ, "fctidz", 0, 1 },
+	{ 846, PPC_OP_FCFID, "fcfid", 0, 1 },
 };
 
 OpcodeInfo Table63_2[] = 
 {
-	{ 18, PPC_OP_FNMADDS, "fdivx", 0, 32 },
-	{ 20, PPC_OP_FNMADDS, "fsubx", 0, 2 },
-	{ 21, PPC_OP_FNMADDS, "faddx", 0, 2 },
-	{ 22, PPC_OP_FNMADDS, "fsqrtx", 0, 2 },
-	{ 23, PPC_OP_FNMADDS, "fselx", 0, 2 },
-	{ 25, PPC_OP_FNMADDS, "fmulx", 0, 2 },
-	{ 26, PPC_OP_FNMADDS, "frsqrtex", 0, 2 },
-	{ 28, PPC_OP_FNMADDS, "fmsubx", 0, 2 },
-	{ 29, PPC_OP_FNMADDS, "fmaddx", 0, 2 },
-	{ 30, PPC_OP_FNMADDS, "fnmsubx", 0, 2 },
-	{ 31, PPC_OP_FNMADDS, "fnmaddx", 0, 2 },
+	{ 18, PPC_OP_FDIV, "fdiv", 0, 32 },
+	{ 20, PPC_OP_FSUB, "fsub", 0, 2 },
+	{ 21, PPC_OP_FADD, "fadd", 0, 2 },
+	{ 22, PPC_OP_FSQRT, "fsqrt", 0, 2 },
+	{ 23, PPC_OP_FSEL, "fsel", 0, 2 },
+	{ 25, PPC_OP_FMUL, "fmul", 0, 2 },
+	{ 26, PPC_OP_FRSQRTE, "frsqrte", 0, 2 },
+	{ 28, PPC_OP_FMSUB, "fmsub", 0, 2 },
+	{ 29, PPC_OP_FMADD, "fmadd", 0, 2 },
+	{ 30, PPC_OP_FNMSUB, "fnmsub", 0, 2 },
+	{ 31, PPC_OP_FNMADD, "fnmadd", 0, 2 },
 };
 
 OpcodeInfo *RealTableBase[64];
@@ -447,7 +447,7 @@ OpcodeInfo *GetInfo(u32 Instruction)
 	else if (base == 30)
 		return SubTable[Instruction & 0xF];
 	else if (base == 59)
-		return SubTable[Instruction & 0x1F];
+		return SubTable[(Instruction >> 1) & 0x1F];
 
 	throw Exception("XenonParser: How the f*** did you get here??");
 }

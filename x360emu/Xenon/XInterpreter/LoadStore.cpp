@@ -125,7 +125,8 @@ void XInterpreter::OpLfdx(Xenon::CpuState *xState)
 void XInterpreter::OpLfs(Xenon::CpuState *xState)
 {
 	u32 tmp = Memory::Read32(GetEA(xState));
-    rFP[INSTR.FD] = *(float *) &tmp;
+	float val = *(float *) &tmp;
+    rFPD[INSTR.FD] = val;
 }
 
 void XInterpreter::OpLfsu(Xenon::CpuState *xState)
