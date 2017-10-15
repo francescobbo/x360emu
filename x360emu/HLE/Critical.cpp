@@ -22,90 +22,90 @@
 
 inline LONG BeDecrement(LONG &val)
 {
-	LONG tmp = _byteswap_ulong(val) - 1;
-	val = _byteswap_ulong(tmp);
-	return val;
+    LONG tmp = _byteswap_ulong(val) - 1;
+    val = _byteswap_ulong(tmp);
+    return val;
 }
 
 inline LONG BeIncrement(LONG &val)
 {
-	LONG tmp = _byteswap_ulong(val) + 1;
-	val = _byteswap_ulong(tmp);
-	return val;
+    LONG tmp = _byteswap_ulong(val) + 1;
+    val = _byteswap_ulong(tmp);
+    return val;
 }
 
 namespace HLE
 {
-	::CRITICAL_SECTION cs;
+    ::CRITICAL_SECTION cs;
 
-	void RtlInitializeCriticalSection(Xenon::CpuState *xState)
-	{
-		xState->gpr[4] = 0;
-		RtlInitializeCriticalSectionAndSpinCount(xState);
-	}
+    void RtlInitializeCriticalSection(Xenon::CpuState *xState)
+    {
+        xState->gpr[4] = 0;
+        RtlInitializeCriticalSectionAndSpinCount(xState);
+    }
 
-	void RtlInitializeCriticalSectionAndSpinCount(Xenon::CpuState *xState)
-	{
-		RTL_CRITICAL_SECTION *crit = (RTL_CRITICAL_SECTION *) Memory::GetPointer((u32) xState->gpr[3]);
+    void RtlInitializeCriticalSectionAndSpinCount(Xenon::CpuState *xState)
+    {
+        RTL_CRITICAL_SECTION *crit = (RTL_CRITICAL_SECTION *) Memory::GetPointer((u32) xState->gpr[3]);
 
-		crit->Unknown[0] = _byteswap_ulong(1);
-		crit->Unknown[1] = 0;
-		crit->Unknown[2] = crit->Unknown[3] = (LONG) xState->gpr[3] + 8;
+        crit->Unknown[0] = _byteswap_ulong(1);
+        crit->Unknown[1] = 0;
+        crit->Unknown[2] = crit->Unknown[3] = (LONG) xState->gpr[3] + 8;
 
-		crit->RecursionCount = crit->OwningThread = 0;
-		crit->LockCount = 0xFFFFFFFF;
+        crit->RecursionCount = crit->OwningThread = 0;
+        crit->LockCount = 0xFFFFFFFF;
 
-		/* I don't know why do the Xbox Kernel do this with the SpinCount */
-		((u8 *) crit)[1] = ((xState->gpr[4] + 0xFF) >> 8) & 1;
-	}
+        /* I don't know why do the Xbox Kernel do this with the SpinCount */
+        ((u8 *) crit)[1] = ((xState->gpr[4] + 0xFF) >> 8) & 1;
+    }
 
-	void RtlEnterCriticalSection(Xenon::CpuState *xState)
-	{
-		RTL_CRITICAL_SECTION *crit = (RTL_CRITICAL_SECTION *) Memory::GetPointer((u32) xState->gpr[3]);
+    void RtlEnterCriticalSection(Xenon::CpuState *xState)
+    {
+        RTL_CRITICAL_SECTION *crit = (RTL_CRITICAL_SECTION *) Memory::GetPointer((u32) xState->gpr[3]);
 
-		::EnterCriticalSection(&cs);
+        ::EnterCriticalSection(&cs);
 
-		// Reverse engineered from xboxkrnl.exe
-		LONG Thread = Memory::Read32((u32) xState->gpr[13] + 0x100);
+        // Reverse engineered from xboxkrnl.exe
+        LONG Thread = Memory::Read32((u32) xState->gpr[13] + 0x100);
 
-		if (BeIncrement(crit->LockCount))
-		{
-			if (Thread == _byteswap_ulong(crit->OwningThread))
-				BeIncrement(crit->RecursionCount);
-//			else
-//				RtlpWaitForCriticalSection(crit);
-		}
-		else
-		{
-			crit->OwningThread = _byteswap_ulong(Thread);
-			crit->RecursionCount = _byteswap_ulong(1);
-		}
+        if (BeIncrement(crit->LockCount))
+        {
+            if (Thread == _byteswap_ulong(crit->OwningThread))
+                BeIncrement(crit->RecursionCount);
+//          else
+//              RtlpWaitForCriticalSection(crit);
+        }
+        else
+        {
+            crit->OwningThread = _byteswap_ulong(Thread);
+            crit->RecursionCount = _byteswap_ulong(1);
+        }
 
-		::LeaveCriticalSection(&cs);
-		xState->gpr[3] = STATUS_SUCCESS;
-	}
+        ::LeaveCriticalSection(&cs);
+        xState->gpr[3] = STATUS_SUCCESS;
+    }
 
-	void RtlLeaveCriticalSection(Xenon::CpuState *xState)
-	{
-		RTL_CRITICAL_SECTION *crit = (RTL_CRITICAL_SECTION *) Memory::GetPointer((u32) xState->gpr[3]);
+    void RtlLeaveCriticalSection(Xenon::CpuState *xState)
+    {
+        RTL_CRITICAL_SECTION *crit = (RTL_CRITICAL_SECTION *) Memory::GetPointer((u32) xState->gpr[3]);
 
-		::EnterCriticalSection(&cs);
+        ::EnterCriticalSection(&cs);
 
-		if (BeDecrement(crit->RecursionCount))
-			BeDecrement(crit->LockCount);
-		else
-		{
-			/* 0 is 0x00000000 both in Big Endian and in Little Endian */
-			crit->OwningThread = 0;
+        if (BeDecrement(crit->RecursionCount))
+            BeDecrement(crit->LockCount);
+        else
+        {
+            /* 0 is 0x00000000 both in Big Endian and in Little Endian */
+            crit->OwningThread = 0;
 
-			BeDecrement(crit->LockCount);
-			/* -1 is 0xFFFFFFFF both in Big Endian and in Little Endian */
-//			if (crit->LockCount == -1)
-//				RtlpUnWaitCriticalSection(crit);
-		}
+            BeDecrement(crit->LockCount);
+            /* -1 is 0xFFFFFFFF both in Big Endian and in Little Endian */
+//          if (crit->LockCount == -1)
+//              RtlpUnWaitCriticalSection(crit);
+        }
 
-		::LeaveCriticalSection(&cs);
+        ::LeaveCriticalSection(&cs);
 
-		xState->gpr[3] = STATUS_SUCCESS;
-	}
+        xState->gpr[3] = STATUS_SUCCESS;
+    }
 }

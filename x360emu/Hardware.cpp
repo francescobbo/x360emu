@@ -12,19 +12,19 @@
 
 namespace Hardware
 {
-	void Init()
-	{
-		Memory::Init();
-		Xenon::Init();
-	}
+    void Init()
+    {
+        Memory::Init();
+        Xenon::Init();
+    }
 
-	void Shutdown()
-	{
-		Memory::Shutdown();
-	}
+    void Shutdown()
+    {
+        Memory::Shutdown();
+    }
 
-	void Boot()
-	{
-		Xenon::Boot();
-	}
+    void Boot()
+    {
+        Xenon::Boot();
+    }
 }

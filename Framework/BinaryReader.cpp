@@ -12,108 +12,108 @@
 
 BinaryReader::BinaryReader(Stream &stream) : BaseStream(stream)
 {
-	if (!stream.IsOpen() || !stream.CanRead())
-		throw ArgumentException();
+    if (!stream.IsOpen() || !stream.CanRead())
+        throw ArgumentException();
 }
 
 u8 BinaryReader::ReadByte()
 {
-	u8 ret;
-	BaseStream.Read((u8 *) &ret, 1);
-	return ret;
+    u8 ret;
+    BaseStream.Read((u8 *) &ret, 1);
+    return ret;
 }
 
 u16 BinaryReader::ReadUInt16()
 {
-	u16 ret;
-	BaseStream.Read((u8 *) &ret, 2);
-	return ret;
+    u16 ret;
+    BaseStream.Read((u8 *) &ret, 2);
+    return ret;
 }
 
 u32 BinaryReader::ReadUInt32()
 {
-	u32 ret;
-	BaseStream.Read((u8 *) &ret, 4);
-	return ret;
+    u32 ret;
+    BaseStream.Read((u8 *) &ret, 4);
+    return ret;
 }
 
 u64 BinaryReader::ReadUInt64()
 {
-	u64 ret;
-	BaseStream.Read((u8 *) &ret, 8);
-	return ret;
+    u64 ret;
+    BaseStream.Read((u8 *) &ret, 8);
+    return ret;
 }
 
 char BinaryReader::ReadChar()
 {
-	char ret;
-	BaseStream.Read((u8 *) &ret, 1);
-	return ret;
+    char ret;
+    BaseStream.Read((u8 *) &ret, 1);
+    return ret;
 }
 
 s16 BinaryReader::ReadInt16()
 {
-	s16 ret;
-	BaseStream.Read((u8 *) &ret, 2);
-	return ret;
+    s16 ret;
+    BaseStream.Read((u8 *) &ret, 2);
+    return ret;
 }
 
 s32 BinaryReader::ReadInt32()
 {
-	s32 ret;
-	BaseStream.Read((u8 *) &ret, 4);
-	return ret;
+    s32 ret;
+    BaseStream.Read((u8 *) &ret, 4);
+    return ret;
 }
 
 s64 BinaryReader::ReadInt64()
 {
-	s64 ret;
-	BaseStream.Read((u8 *) &ret, 8);
-	return ret;
+    s64 ret;
+    BaseStream.Read((u8 *) &ret, 8);
+    return ret;
 }
 
 void BinaryReader::ReadBytes(u8 *buffer, u64 length)
 {
-	BaseStream.Read(buffer, length);
+    BaseStream.Read(buffer, length);
 }
 
 bool BinaryReader::ReadBool()
 {
-	bool ret;
-	BaseStream.Read((u8 *) &ret, 1);
-	return ret;
+    bool ret;
+    BaseStream.Read((u8 *) &ret, 1);
+    return ret;
 }
 
 double BinaryReader::ReadDouble()
 {
-	double ret;
-	BaseStream.Read((u8 *) &ret, 8);
-	return ret;
+    double ret;
+    BaseStream.Read((u8 *) &ret, 8);
+    return ret;
 }
 
 float BinaryReader::ReadFloat()
 {
-	float ret;
-	BaseStream.Read((u8 *) &ret, 4);
-	return ret;
+    float ret;
+    BaseStream.Read((u8 *) &ret, 4);
+    return ret;
 }
 
 void BinaryReader::ReadString(std::string &str)
 {
-	str = "";
-	
-	char c = ReadChar();
-	while (c)
-	{
-		str += c;
-		c = ReadChar();
-	}
+    str = "";
+    
+    char c = ReadChar();
+    while (c)
+    {
+        str += c;
+        c = ReadChar();
+    }
 }
 
 void BinaryReader::ReadStringN(std::string &str, u64 length)
 {
-	str = "";
-	
-	for (int i = 0; i < length; i++)
-		str += ReadChar();
+    str = "";
+    
+    for (int i = 0; i < length; i++)
+        str += ReadChar();
 }
